@@ -16,7 +16,6 @@
 
 #include "DbConnection.h"
 #include <drogon/orm/DbClient.h>
-#include <trantor/net/EventLoopThreadPool.h>
 #include <functional>
 #include <memory>
 #include <queue>
@@ -34,7 +33,7 @@ class DbClientLockFree : public DbClient,
 {
   public:
     DbClientLockFree(const std::string &connInfo,
-                     trantor::EventLoop *loop,
+                     const std::shared_ptr<toolkit::EventPoller> &loop,
                      ClientType type,
 #if LIBPQ_SUPPORTS_BATCH_MODE
                      size_t connectionNumberPerLoop,
@@ -73,7 +72,7 @@ class DbClientLockFree : public DbClient,
 
   private:
     std::string connectionInfo_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     DbConnectionPtr newConnection();
     const size_t numberOfConnections_;
     std::vector<DbConnectionPtr> connections_;

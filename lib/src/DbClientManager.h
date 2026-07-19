@@ -18,8 +18,8 @@
 #include <drogon/orm/DbConfig.h>
 #include <drogon/HttpAppFramework.h>
 #include <drogon/IOThreadStorage.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoop.h>
+#include <Util/util.h>
+#include <Poller/EventPoller.h>
 #include <string>
 #include <memory>
 
@@ -27,10 +27,10 @@ namespace drogon
 {
 namespace orm
 {
-class DbClientManager : public trantor::NonCopyable
+class DbClientManager : public toolkit::noncopyable
 {
   public:
-    void createDbClients(const std::vector<trantor::EventLoop *> &ioLoops);
+    void createDbClients();
 
     DbClientPtr getDbClient(const std::string &name)
     {

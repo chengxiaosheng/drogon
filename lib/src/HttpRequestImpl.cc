@@ -54,7 +54,7 @@ void HttpRequestImpl::parseJson() const
                            jsonPtr_.get(),
                            &errs))
         {
-            LOG_DEBUG << errs;
+            DebugL << errs;
             jsonPtr_.reset();
             jsonParsingErrorPtr_ =
                 std::make_unique<std::string>(std::move(errs));
@@ -347,7 +347,7 @@ void HttpRequestImpl::appendToBuffer(trantor::MsgBuffer *output) const
                                          std::ifstream::binary);
                     if (!infile)
                     {
-                        LOG_ERROR << file.path() << " not found";
+                        ErrorL << file.path() << " not found";
                     }
                     else
                     {
@@ -463,7 +463,7 @@ void HttpRequestImpl::addHeader(const char *start,
     }
     if (field.length() == 6 && field == "cookie")
     {
-        LOG_TRACE << "cookies!!!:" << value;
+        TraceL << "cookies!!!:" << value;
         std::string::size_type pos;
         while ((pos = value.find(';')) != std::string::npos)
         {
@@ -808,7 +808,7 @@ HttpRequestImpl::~HttpRequestImpl()
 
 void HttpRequestImpl::reserveBodySize(size_t length)
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     if (cacheFilePtr_)
     {
         return;
@@ -831,7 +831,7 @@ void HttpRequestImpl::reserveBodySize(size_t length)
 
 void HttpRequestImpl::appendToBody(const char *data, size_t length)
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     realContentLength_ += length;
     if (streamReaderPtr_)
     {
@@ -1079,7 +1079,7 @@ StreamDecompressStatus HttpRequestImpl::decompressBodyGzip() noexcept
 
 void HttpRequestImpl::setStreamReader(RequestStreamReaderPtr reader)
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     assert(!streamReaderPtr_);
     assert(streamStatus_ > ReqStreamStatus::None);
 
@@ -1122,7 +1122,7 @@ void HttpRequestImpl::streamStart()
 
 void HttpRequestImpl::streamFinish()
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     assert(streamStatus_ == ReqStreamStatus::Open);
     streamStatus_ = ReqStreamStatus::Finish;
     if (streamFinishCb_)
@@ -1143,7 +1143,7 @@ void HttpRequestImpl::streamError(std::exception_ptr ex)
     // TODO: can we be sure that streamError() only be called once?
     // If not, we could allow it to be called multiple times, and
     // only handle the first one.
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     assert(streamStatus_ == ReqStreamStatus::Open);
     streamStatus_ = ReqStreamStatus::Error;
     if (streamReaderPtr_)
@@ -1166,7 +1166,7 @@ void HttpRequestImpl::streamError(std::exception_ptr ex)
 
 void HttpRequestImpl::waitForStreamFinish(std::function<void()> &&cb)
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     assert(streamStatus_ > ReqStreamStatus::None);
 
     if (streamStatus_ <= ReqStreamStatus::Open)
@@ -1182,7 +1182,7 @@ void HttpRequestImpl::waitForStreamFinish(std::function<void()> &&cb)
 
 void HttpRequestImpl::quitStreamMode()
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     assert(streamStatus_ >= ReqStreamStatus::Finish);
     assert(!streamReaderPtr_);
     streamStatus_ = ReqStreamStatus::None;

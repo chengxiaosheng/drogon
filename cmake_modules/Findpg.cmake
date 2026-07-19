@@ -29,10 +29,13 @@ if(PostgreSQL_FOUND)
   message(STATUS "pg inc: " ${PostgreSQL_INCLUDE_DIRS})
   add_library(pg_lib INTERFACE IMPORTED)
   set_target_properties(pg_lib
-                        PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                   "${PostgreSQL_INCLUDE_DIRS}"
-                                   INTERFACE_LINK_LIBRARIES
-                                   "${PostgreSQL_LIBRARIES}")
+          PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+          "${PostgreSQL_INCLUDE_DIRS}")
+
+  # 将 PostgreSQL_LIBRARIES 列表展开，target_link_libraries 会自动处理
+  # debug/optimized 关键字
+  target_link_libraries(pg_lib INTERFACE ${PostgreSQL_LIBRARIES})
+
   mark_as_advanced(PG_INCLUDE_DIRS PG_LIBRARIES)
 endif(PostgreSQL_FOUND)
 include(FindPackageHandleStandardArgs)

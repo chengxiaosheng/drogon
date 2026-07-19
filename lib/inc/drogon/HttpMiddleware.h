@@ -134,7 +134,7 @@ class HttpCoroMiddleware : public DrObject<T>, public HttpMiddlewareBase
             }
             catch (...)
             {
-                LOG_ERROR << "Exception not derived from std::exception";
+                ErrorL << "Exception not derived from std::exception";
                 co_return;
             }
 

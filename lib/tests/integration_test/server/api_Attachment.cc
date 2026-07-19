@@ -17,12 +17,12 @@ void Attachment::upload(const HttpRequestPtr &req,
     MultiPartParser fileUpload;
     if (fileUpload.parse(req) == 0)
     {
-        // LOG_DEBUG << "upload good!";
+        // DebugL << "upload good!";
         auto &files = fileUpload.getFiles();
-        // LOG_DEBUG << "file num=" << files.size();
+        // DebugL << "file num=" << files.size();
         for (auto const &file : files)
         {
-            LOG_DEBUG << "file:" << file.getFileName()
+            DebugL << "file:" << file.getFileName()
                       << "(extension=" << file.getFileExtension()
                       << ",type=" << file.getFileType()
                       << ",len=" << file.fileLength()
@@ -45,8 +45,8 @@ void Attachment::upload(const HttpRequestPtr &req,
         callback(resp);
         return;
     }
-    LOG_DEBUG << "upload error!";
-    // LOG_DEBUG << req->con
+    DebugL << "upload error!";
+    // DebugL << req->con
     Json::Value json;
     json["result"] = "failed";
     auto resp = HttpResponse::newHttpJsonResponse(json);
@@ -62,7 +62,7 @@ void Attachment::uploadImage(
     // At this endpoint, we only accept one file
     if (fileUpload.parse(req) == 0 && fileUpload.getFiles().size() == 1)
     {
-        // LOG_DEBUG << "upload image good!";
+        // DebugL << "upload image good!";
         Json::Value json;
 
         // Get the first file received
@@ -95,8 +95,8 @@ void Attachment::uploadImage(
         callback(resp);
         return;
     }
-    LOG_DEBUG << "upload image error!";
-    // LOG_DEBUG << req->con
+    DebugL << "upload image error!";
+    // DebugL << req->con
     Json::Value json;
     json["result"] = "failed";
     auto resp = HttpResponse::newHttpJsonResponse(json);
@@ -123,7 +123,7 @@ void Attachment::uploadMemory(
             return;
         }
     }
-    LOG_DEBUG << "upload text from memory error!";
+    DebugL << "upload text from memory error!";
     auto resp = HttpResponse::newHttpResponse();
     resp->setStatusCode(HttpStatusCode::k400BadRequest);
     callback(resp);

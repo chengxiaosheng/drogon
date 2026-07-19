@@ -41,7 +41,7 @@ using HttpResponsePtr = std::shared_ptr<HttpResponse>;
 template <typename T>
 T fromResponse(const HttpResponse &)
 {
-    LOG_ERROR
+    ErrorL
         << "You must specialize the fromResponse template for the type of "
         << DrClassMap::demangle(typeid(T).name());
     exit(1);
@@ -55,7 +55,7 @@ T fromResponse(const HttpResponse &)
 template <typename T>
 HttpResponsePtr toResponse(T &&)
 {
-    LOG_ERROR << "You must specialize the toResponse template for the type of "
+    ErrorL << "You must specialize the toResponse template for the type of "
               << DrClassMap::demangle(typeid(T).name());
     exit(1);
 }

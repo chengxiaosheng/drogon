@@ -26,8 +26,8 @@
 #include <functional>
 #include <future>
 #include <string>
-#include <trantor/utils/Logger.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/logger.h>
+#include <Util/util.h>
 
 #ifdef __cpp_impl_coroutine
 #include <drogon/utils/coroutine.h>
@@ -101,7 +101,7 @@ struct [[nodiscard]] TransactionAwaiter
 }  // namespace internal
 
 /// Database client abstract class
-class DROGON_EXPORT DbClient : public trantor::NonCopyable
+class DROGON_EXPORT DbClient : public toolkit::noncopyable
 {
   public:
     virtual ~DbClient();

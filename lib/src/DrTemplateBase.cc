@@ -14,7 +14,7 @@
 
 #include <drogon/DrClassMap.h>
 #include <drogon/DrTemplateBase.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <memory>
 #include <regex>
 
@@ -23,7 +23,7 @@ using namespace drogon;
 std::shared_ptr<DrTemplateBase> DrTemplateBase::newTemplate(
     const std::string &templateName)
 {
-    LOG_TRACE << "http view name=" << templateName;
+    TraceL << "http view name=" << templateName;
     auto l = templateName.length();
     if (l >= 4 && templateName[l - 4] == '.' && templateName[l - 3] == 'c' &&
         templateName[l - 2] == 's' && templateName[l - 1] == 'p')

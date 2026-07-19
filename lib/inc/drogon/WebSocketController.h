@@ -18,7 +18,7 @@
 #include <drogon/HttpAppFramework.h>
 #include <drogon/WebSocketConnection.h>
 #include <drogon/HttpTypes.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -87,7 +87,7 @@ class WebSocketController : public DrObject<T>, public WebSocketControllerBase
         const std::string &path,
         const std::vector<internal::HttpConstraint> &constraints)
     {
-        LOG_TRACE << "register websocket controller("
+        TraceL << "register websocket controller("
                   << WebSocketController<T, AutoCreation>::classTypeName()
                   << ") on path:" << path;
         app().registerWebSocketController(
@@ -100,7 +100,7 @@ class WebSocketController : public DrObject<T>, public WebSocketControllerBase
         const std::string &regExp,
         const std::vector<internal::HttpConstraint> &constraints)
     {
-        LOG_TRACE << "register websocket controller("
+        TraceL << "register websocket controller("
                   << WebSocketController<T, AutoCreation>::classTypeName()
                   << ") on regExp:" << regExp;
         app().registerWebSocketControllerRegex(

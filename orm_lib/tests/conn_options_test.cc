@@ -15,11 +15,11 @@ DROGON_TEST(ConnOptionsTest)
     clientPtr->execSqlAsync(
         "select pg_sleep(5);",
         [TEST_CTX](const drogon::orm::Result &r) {
-            LOG_INFO << "select pg_sleep(5);";
+            InfoL << "select pg_sleep(5);";
             FAULT("Statement should be canceled due to timeout.");
         },
         [TEST_CTX](const drogon::orm::DrogonDbException &e) {
-            LOG_INFO << "select pg_sleep(5); error(expected):"
+            InfoL << "select pg_sleep(5); error(expected):"
                      << e.base().what();
             SUCCESS();
         });
@@ -33,7 +33,7 @@ BEGIN
     perform pg_sleep(2);
 END $$;)",
         [TEST_CTX](const drogon::orm::Result &r) {
-            LOG_INFO << "pg_advisory_xact_lock transaction1 finished;";
+            InfoL << "pg_advisory_xact_lock transaction1 finished;";
             SUCCESS();
         },
         [TEST_CTX](const drogon::orm::DrogonDbException &e) {
@@ -50,11 +50,11 @@ BEGIN
     perform pg_advisory_xact_lock(12345);
 END $$;)",
         [TEST_CTX](const drogon::orm::Result &r) {
-            LOG_INFO << "pg_advisory_xact_lock transaction2 finished;";
+            InfoL << "pg_advisory_xact_lock transaction2 finished;";
             FAULT("Statement should be canceled due to timeout.");
         },
         [TEST_CTX](const drogon::orm::DrogonDbException &e) {
-            LOG_INFO << "pg_advisory_xact_lock() error(expected):"
+            InfoL << "pg_advisory_xact_lock() error(expected):"
                      << e.base().what();
             SUCCESS();
         });

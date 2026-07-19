@@ -124,13 +124,13 @@ void SubscribeContext::onMessage(const std::string &channel,
 void SubscribeContext::onSubscribe(const std::string &channel,
                                    long long numChannels)
 {
-    LOG_DEBUG << "Subscribe success to [" << channel << "], total "
+    DebugL << "Subscribe success to [" << channel << "], total "
               << numChannels;
 }
 
 void SubscribeContext::onUnsubscribe(const std::string &channel,
                                      long long numChannels)
 {
-    LOG_DEBUG << "Unsubscribe success from [" << channel << "], total "
+    DebugL << "Unsubscribe success from [" << channel << "], total "
               << numChannels;
 }

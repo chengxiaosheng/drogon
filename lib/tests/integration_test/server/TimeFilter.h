@@ -16,6 +16,6 @@ class TimeFilter : public drogon::HttpFilter<TimeFilter>
 
     TimeFilter()
     {
-        LOG_DEBUG << "TimeFilter constructor";
+        DebugL << "TimeFilter constructor";
     }
 };

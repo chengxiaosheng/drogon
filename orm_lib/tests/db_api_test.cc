@@ -130,14 +130,14 @@ int main(int argc, char **argv)
     cfg = Json::objectValue;
     if (!parseJson(pg_non_fast_config, &cfg, &err))
     {
-        LOG_ERROR << "Failed to parse json: " << err;
+        ErrorL << "Failed to parse json: " << err;
         return 1;
     }
     config["db_clients"].append(cfg);
     cfg = Json::objectValue;
     if (!parseJson(pg_fast_config.data(), &cfg, &err))
     {
-        LOG_ERROR << "Failed to parse json: " << err;
+        ErrorL << "Failed to parse json: " << err;
         return 1;
     }
     config["db_clients"].append(cfg);
@@ -147,14 +147,14 @@ int main(int argc, char **argv)
     cfg = Json::objectValue;
     if (!parseJson(mysql_non_fast_config, &cfg, &err))
     {
-        LOG_ERROR << "Failed to parse json: " << err;
+        ErrorL << "Failed to parse json: " << err;
         return 1;
     }
     config["db_clients"].append(cfg);
     cfg = Json::objectValue;
     if (!parseJson(mysql_fast_config.data(), &cfg, &err))
     {
-        LOG_ERROR << "Failed to parse json: " << err;
+        ErrorL << "Failed to parse json: " << err;
         return 1;
     }
     config["db_clients"].append(cfg);
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
     cfg = Json::objectValue;
     if (!parseJson(sqlite3_non_fast_config, &cfg, &err))
     {
-        LOG_ERROR << "Failed to parse json: " << err;
+        ErrorL << "Failed to parse json: " << err;
         return 1;
     }
     config["db_clients"].append(cfg);

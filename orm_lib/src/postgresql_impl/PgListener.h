@@ -15,7 +15,6 @@
 #pragma once
 
 #include <drogon/orm/DbListener.h>
-#include <trantor/net/EventLoopThread.h>
 #include <deque>
 #include <mutex>
 #include <string>
@@ -30,11 +29,11 @@ class PgListener : public DbListener,
                    public std::enable_shared_from_this<PgListener>
 {
   public:
-    PgListener(std::string connInfo, trantor::EventLoop *loop);
+    PgListener(std::string connInfo, const std::shared_ptr<toolkit::EventPoller> &loop);
     ~PgListener() override;
     void init() noexcept;
 
-    trantor::EventLoop *loop() const
+    std::shared_ptr<toolkit::EventPoller> loop() const
     {
         return loop_;
     }
@@ -78,8 +77,8 @@ class PgListener : public DbListener,
     PgConnectionPtr newConnection(std::shared_ptr<unsigned int> = nullptr);
 
     std::string connectionInfo_;
-    std::unique_ptr<trantor::EventLoopThread> threadPtr_;
-    trantor::EventLoop *loop_;
+    // std::unique_ptr<trantor::EventLoopThread> threadPtr_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     DbConnectionPtr connHolder_;
     DbConnectionPtr conn_;
     std::deque<std::pair<bool, std::string>> listenTasks_;

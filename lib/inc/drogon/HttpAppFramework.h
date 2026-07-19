@@ -34,8 +34,8 @@
 #include <drogon/nosql/RedisClient.h>
 #include <drogon/Cookie.h>
 #include <trantor/net/Resolver.h>
-#include <trantor/net/EventLoop.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Poller/EventPoller.h>
+#include <Util/util.h>
 #include <functional>
 #include <memory>
 #include <string>
@@ -109,7 +109,7 @@ struct [[nodiscard]] ForwardAwaiter
 };
 }  // namespace internal
 #endif
-class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
+class DROGON_EXPORT HttpAppFramework : public toolkit::noncopyable
 {
   public:
     virtual ~HttpAppFramework() = default;
@@ -155,7 +155,7 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
      * User can run some timer tasks or other tasks in this loop;
      * This method can be call in any thread.
      */
-    virtual trantor::EventLoop *getLoop() const = 0;
+    virtual std::shared_ptr<toolkit::EventPoller> getLoop() const = 0;
 
     /// Get an IO loop with id. E.g. 0 <= id < \#Total thread-loops
     /**
@@ -165,7 +165,7 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
      * REMARKS : Function assumed the number of threads will not exceed 2^32.
      *           Change to long long for alien computers.
      */
-    virtual trantor::EventLoop *getIOLoop(size_t id) const = 0;
+    virtual std::shared_ptr<toolkit::EventPoller> getIOLoop(size_t id) const = 0;
 
     /// Set custom 404 page
     /**
@@ -538,11 +538,11 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
         const std::vector<internal::HttpConstraint> &constraints = {},
         const std::string &handlerName = "")
     {
-        LOG_TRACE << "pathPattern:" << pathPattern;
+        TraceL << "pathPattern:" << pathPattern;
         auto binder = std::make_shared<internal::HttpBinder<FUNCTION>>(
             std::forward<FUNCTION>(function));
 
-        getLoop()->queueInLoop([binder]() { binder->createHandlerInstance(); });
+        getLoop()->async([binder]() { binder->createHandlerInstance(); }, false);
 
         std::vector<HttpMethod> validMethods;
         std::vector<std::string> middlewares;
@@ -558,7 +558,7 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
             }
             else
             {
-                LOG_ERROR << "Invalid controller constraint type";
+                ErrorL << "Invalid controller constraint type";
                 exit(1);
             }
         }
@@ -589,7 +589,7 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
         const std::vector<internal::HttpConstraint> &constraints = {},
         const std::string &handlerName = "")
     {
-        LOG_TRACE << "regex:" << regExp;
+        TraceL << "regex:" << regExp;
         internal::HttpBinderBasePtr binder;
 
         binder = std::make_shared<internal::HttpBinder<FUNCTION>>(
@@ -609,7 +609,7 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
             }
             else
             {
-                LOG_ERROR << "Invalid controller constraint type";
+                ErrorL << "Invalid controller constraint type";
                 exit(1);
             }
         }
@@ -1101,7 +1101,7 @@ class DROGON_EXPORT HttpAppFramework : public trantor::NonCopyable
      * @note
      * This operation can be performed by an option in the configuration file.
      */
-    virtual HttpAppFramework &setLogLevel(trantor::Logger::LogLevel level) = 0;
+    virtual HttpAppFramework &setLogLevel(toolkit::LogLevel level) = 0;
 
     /// Set the log time display
     /**

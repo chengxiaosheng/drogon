@@ -49,7 +49,7 @@ Tag::Tag(const Row &r, const ssize_t indexOffset) noexcept
         size_t offset = (size_t)indexOffset;
         if (offset + 2 > r.size())
         {
-            LOG_FATAL << "Invalid SQL result for this model";
+            ErrorL << "Invalid SQL result for this model";
             return;
         }
         size_t index;
@@ -71,7 +71,7 @@ Tag::Tag(const Json::Value &pJson,
 {
     if (pMasqueradingVector.size() != 2)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -122,7 +122,7 @@ void Tag::updateByMasqueradedJson(
 {
     if (pMasqueradingVector.size() != 2)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -355,7 +355,7 @@ Json::Value Tag::toMasqueradedJson(
         }
         return ret;
     }
-    LOG_ERROR << "Masquerade failed";
+    ErrorL << "Masquerade failed";
     if (getId())
     {
         ret["id"] = (Json::Int64)getValueOfId();

@@ -55,7 +55,7 @@ void SqlBinder::exec()
              exceptPtrCb = std::move(exceptionPtrCallback_),
              isExceptPtr =
                  isExceptionPtr_](const std::exception_ptr &exception) {
-                // LOG_DEBUG<<"exp callback "<<isExceptPtr;
+                // DebugL<<"exp callback "<<isExceptPtr;
                 if (!isExceptPtr)
                 {
                     if (exceptCb)
@@ -349,7 +349,7 @@ SqlBinder &SqlBinder::operator<<(DefaultValue dv)
     }
     else if (type_ == ClientType::Sqlite3)
     {
-        LOG_FATAL << "default not supported in sqlite3";
+        ErrorL << "default not supported in sqlite3";
         exit(1);
     }
     return *this;
@@ -377,7 +377,7 @@ int SqlBinder::getMysqlTypeBySize(size_t size)
     }
 #else
     static_cast<void>(size);
-    LOG_FATAL << "Mysql is not supported!";
+    ErrorL << "Mysql is not supported!";
     exit(1);
 #endif
 }

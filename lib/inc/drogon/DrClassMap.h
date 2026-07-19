@@ -15,7 +15,7 @@
 #pragma once
 
 #include <drogon/exports.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -125,7 +125,7 @@ class DROGON_EXPORT DrClassMap
         {
             return std::string(ptr.get());
         }
-        LOG_ERROR << "Demangle error!";
+        ErrorL << "Demangle error!";
         return "";
 #else
         auto pos = strstr(mangled_name, " ");

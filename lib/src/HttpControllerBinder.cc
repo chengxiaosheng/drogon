@@ -39,7 +39,7 @@ void HttpSimpleControllerBinder::handleRequest(
     }
     catch (...)
     {
-        LOG_ERROR << "Exception not derived from std::exception";
+        ErrorL << "Exception not derived from std::exception";
         return;
     }
 }

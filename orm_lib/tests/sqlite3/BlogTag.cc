@@ -47,7 +47,7 @@ BlogTag::BlogTag(const Row &r, const ssize_t indexOffset) noexcept
         size_t offset = (size_t)indexOffset;
         if (offset + 2 > r.size())
         {
-            LOG_FATAL << "Invalid SQL result for this model";
+            ErrorL << "Invalid SQL result for this model";
             return;
         }
         size_t index;
@@ -70,7 +70,7 @@ BlogTag::BlogTag(
 {
     if (pMasqueradingVector.size() != 2)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -123,7 +123,7 @@ void BlogTag::updateByMasqueradedJson(
 {
     if (pMasqueradingVector.size() != 2)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -337,7 +337,7 @@ Json::Value BlogTag::toMasqueradedJson(
         }
         return ret;
     }
-    LOG_ERROR << "Masquerade failed";
+    ErrorL << "Masquerade failed";
     if (getBlogId())
     {
         ret["blog_id"] = (Json::Int64)getValueOfBlogId();

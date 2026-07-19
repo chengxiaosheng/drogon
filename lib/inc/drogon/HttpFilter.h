@@ -113,7 +113,7 @@ class HttpCoroFilter : public DrObject<T>, public HttpFilterBase
             }
             catch (...)
             {
-                LOG_ERROR << "Exception not derived from std::exception";
+                ErrorL << "Exception not derived from std::exception";
                 co_return;
             }
 

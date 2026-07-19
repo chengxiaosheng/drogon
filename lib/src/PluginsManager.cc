@@ -13,7 +13,9 @@
  */
 
 #include "PluginsManager.h"
-#include <trantor/utils/Logger.h>
+
+#include <cassert>
+#include <Util/logger.h>
 
 using namespace drogon;
 
@@ -67,14 +69,14 @@ void PluginsManager::initializeAllPlugins(
                 }
                 else
                 {
-                    LOG_FATAL << "Dependent plugin " << depName.asString()
+                    ErrorL << "Dependent plugin " << depName.asString()
                               << " is not loaded";
                     abort();
                 }
             }
         }
         pluginPtr->setInitializedCallback([this](PluginBase *p) {
-            LOG_TRACE << "Plugin " << p->className() << " initialized!";
+            TraceL << "Plugin " << p->className() << " initialized!";
             initializedPlugins_.push_back(p);
         });
         plugins.push_back(pluginPtr);
@@ -93,7 +95,7 @@ void PluginsManager::createPlugin(const std::string &pluginName)
         DrClassMap::newSharedObject(pluginName));
     if (!pluginPtr)
     {
-        LOG_ERROR << "Plugin " << pluginName << " undefined!";
+        ErrorL << "Plugin " << pluginName << " undefined!";
         return;
     }
     pluginsMap_[pluginName] = pluginPtr;

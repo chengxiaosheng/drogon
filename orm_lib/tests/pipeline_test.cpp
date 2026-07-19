@@ -12,7 +12,7 @@ static int step = 0;
 static std::vector<std::function<void()>> testSteps;
 
 static auto runNextStep = [] {
-    LOG_INFO << "Step = " << step;
+    InfoL << "Step = " << step;
     if (step < testSteps.size())
     {
         app().getIOLoop(0)->runAfter(0.5, testSteps[step++]);
@@ -30,7 +30,7 @@ DROGON_TEST(PgPipelineTest)
         clientPtr->execSqlAsync(
             "drop table if exists drogon_test_pipeline;",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Create table drogon_test_pipeline.";
+                InfoL << "Create table drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_init(0) what():" +
@@ -39,7 +39,7 @@ DROGON_TEST(PgPipelineTest)
         clientPtr->execSqlAsync(
             "drop function if exists fn_drogon_test_pipeline;",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Drop function fn_drogon_test_pipeline.";
+                InfoL << "Drop function fn_drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_init(1) what():" +
@@ -53,7 +53,7 @@ DROGON_TEST(PgPipelineTest)
             "   name    text    unique"
             ");",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Create table drogon_test_pipeline.";
+                InfoL << "Create table drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_init(2) what():" +
@@ -67,7 +67,7 @@ DROGON_TEST(PgPipelineTest)
             "   (1, 'trantor'),"
             "   (2, 'drogon');",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Insert data into drogon_test_pipeline.";
+                InfoL << "Insert data into drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_init(3) what():" +
@@ -83,7 +83,7 @@ DROGON_TEST(PgPipelineTest)
             "   update drogon_test_pipeline t set name = $2 where t.id = $1;"
             "end $$;",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Insert data into drogon_test_pipeline.";
+                InfoL << "Insert data into drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_init(4) what():" +
@@ -200,7 +200,7 @@ DROGON_TEST(PgPipelineTest)
         clientPtr->execSqlAsync(
             "drop table drogon_test_pipeline;",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Drop table drogon_test_pipeline.";
+                InfoL << "Drop table drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_cleanup(0) what():" +
@@ -210,7 +210,7 @@ DROGON_TEST(PgPipelineTest)
         clientPtr->execSqlAsync(
             "drop function fn_drogon_test_pipeline;",
             [TEST_CTX](const drogon::orm::Result &r) {
-                LOG_INFO << "Drop function fn_drogon_test_pipeline.";
+                InfoL << "Drop function fn_drogon_test_pipeline.";
             },
             [TEST_CTX](const drogon::orm::DrogonDbException &e) {
                 FAULT("PgPipelineTest_cleanup(1) what():" +

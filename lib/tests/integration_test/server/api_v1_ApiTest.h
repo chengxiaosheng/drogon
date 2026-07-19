@@ -95,7 +95,7 @@ class ApiTest : public drogon::HttpController<ApiTest>
   public:
     ApiTest()
     {
-        LOG_DEBUG << "ApiTest constructor!";
+        DebugL << "ApiTest constructor!";
     }
 };
 }  // namespace v1

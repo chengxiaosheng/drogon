@@ -19,7 +19,7 @@
 #include <drogon/HttpAppFramework.h>
 #include <iostream>
 #include <string>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <vector>
 
 /// For more details on the class, see the wiki site (the 'HttpController'
@@ -74,7 +74,7 @@ class HttpController : public DrObject<T>, public HttpControllerBase
         {
             std::string path = "/";
             path.append(HttpController<T, AutoCreation>::classTypeName());
-            LOG_TRACE << "classname:"
+            TraceL << "classname:"
                       << HttpController<T, AutoCreation>::classTypeName();
 
             // transform(path.begin(), path.end(), path.begin(), [](unsigned

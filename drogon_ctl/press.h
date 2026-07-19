@@ -19,7 +19,6 @@
 #include <drogon/HttpAppFramework.h>
 #include <drogon/HttpClient.h>
 #include <trantor/utils/Date.h>
-#include <trantor/net/EventLoopThreadPool.h>
 #include <functional>
 #include <string>
 #include <atomic>
@@ -74,7 +73,6 @@ class press : public DrObject<press>, public CommandHandler
     void createRequestAndClients();
     void sendRequest(const HttpClientPtr &client);
     void outputResults();
-    std::unique_ptr<trantor::EventLoopThreadPool> loopPool_;
     std::vector<HttpClientPtr> clients_;
     Statistics statistics_;
 };

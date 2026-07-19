@@ -1,5 +1,5 @@
 #include "PipeliningTest.h"
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <atomic>
 #include <mutex>
 
@@ -52,7 +52,7 @@ void PipeliningTest::strangePipe1(
         std::pair<std::function<void(const HttpResponsePtr &)>, std::string>>
         callbacks;
 
-    LOG_INFO << "Receive request " << req->body();
+    InfoL << "Receive request " << req->body();
     std::function<void(const HttpResponsePtr &)> cb1;
     std::string body1;
     std::function<void(const HttpResponsePtr &)> cb2;
@@ -98,7 +98,7 @@ void PipeliningTest::strangePipe2(
         callbacks;
     static uint64_t idx{0};
 
-    LOG_INFO << "Receive request " << req->body();
+    InfoL << "Receive request " << req->body();
     std::function<void(const HttpResponsePtr &)> cb1;
     std::string body1;
     std::function<void(const HttpResponsePtr &)> cb2;

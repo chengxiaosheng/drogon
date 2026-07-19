@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/InetAddress.h>
 #include <trantor/utils/Date.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 #include <drogon/CacheMap.h>
 #include <drogon/HttpAppFramework.h>

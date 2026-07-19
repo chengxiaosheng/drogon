@@ -19,7 +19,7 @@ using namespace drogon_ctl;
 #include <drogon/orm/CoroMapper.h>
 #endif
 #include <trantor/utils/Date.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <json/json.h>
 #include <string>
 #include <string_view>
@@ -556,7 +556,7 @@ if(cols[i].hasDefaultVal_&&@@.get<std::string>("rdbms")!="sqlite3")
             $$<<"        sql.append(1, ')');\n";
         }
 %>
-        LOG_TRACE << sql;
+        TraceL << sql;
         return sql;
     }
 };

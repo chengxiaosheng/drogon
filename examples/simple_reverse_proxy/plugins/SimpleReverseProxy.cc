@@ -20,13 +20,13 @@ void SimpleReverseProxy::initAndStart(const Json::Value &config)
         }
         if (backendAddrs_.empty())
         {
-            LOG_ERROR << "You must set at least one backend";
+            ErrorL << "You must set at least one backend";
             abort();
         }
     }
     else
     {
-        LOG_ERROR << "Error in configuration";
+        ErrorL << "Error in configuration";
         abort();
     }
     pipeliningDepth_ = config.get("pipelining", 0).asInt();
@@ -35,7 +35,7 @@ void SimpleReverseProxy::initAndStart(const Json::Value &config)
     connectionFactor_ = config.get("connection_factor", 1).asInt();
     if (connectionFactor_ == 0 || connectionFactor_ > 100)
     {
-        LOG_ERROR << "invalid number of connection factor";
+        ErrorL << "invalid number of connection factor";
         abort();
     }
     clients_.init(

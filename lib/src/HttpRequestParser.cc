@@ -14,7 +14,7 @@
 
 #include "HttpRequestParser.h"
 #include <drogon/HttpTypes.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <trantor/utils/MsgBuffer.h>
 #include <iostream>
 #include "HttpAppFrameworkImpl.h"
@@ -300,7 +300,7 @@ int HttpRequestParser::parseRequest(MsgBuffer *buf)
                 }
                 else if (!expect.empty())
                 {
-                    LOG_WARN << "417ExpectationFailed for \"" << expect << "\"";
+                    WarnL << "417ExpectationFailed for \"" << expect << "\"";
                     return -k417ExpectationFailed;
                 }
 

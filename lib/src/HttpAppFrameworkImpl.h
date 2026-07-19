@@ -305,7 +305,7 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
                                  size_t logfileSize,
                                  size_t maxFiles,
                                  bool useSpdlog) override;
-    HttpAppFramework &setLogLevel(trantor::Logger::LogLevel level) override;
+    HttpAppFramework &setLogLevel(toolkit::LogLevel level);
     HttpAppFramework &setLogLocalTime(bool on) override;
 
     HttpAppFramework &enableSendfile(bool sendFile) override
@@ -494,9 +494,9 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
         return floatPrecisionInJson_;
     }
 
-    trantor::EventLoop *getLoop() const override;
+    std::shared_ptr<toolkit::EventPoller> getLoop() const override;
 
-    trantor::EventLoop *getIOLoop(size_t id) const override;
+    std::shared_ptr<toolkit::EventPoller> getIOLoop(size_t id) const override;
 
     void quit() override;
 
@@ -599,11 +599,8 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
 
     size_t getCurrentThreadIndex() const override
     {
-        auto *loop = trantor::EventLoop::getEventLoopOfCurrentThread();
-        if (loop)
-        {
-            return loop->index();
-        }
+        auto loop = toolkit::EventPollerPool::Instance().getPoller();
+        return loop->index();
         return (std::numeric_limits<size_t>::max)();
     }
 
@@ -707,7 +704,6 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
     std::atomic_bool routersInit_{false};
 
     size_t threadNum_{1};
-    std::unique_ptr<trantor::EventLoopThreadPool> ioLoopThreadPool_;
 
 #if !defined(_WIN32) && !TARGET_OS_IOS
     std::vector<std::string> libFilePaths_;
@@ -760,6 +756,9 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
     std::vector<std::function<void()>> beginningAdvices_;
 
     ExceptionHandler exceptionHandler_{defaultExceptionHandler};
+
+    std::shared_ptr<toolkit::EventPoller> main_poller_;
+
     bool enableCompressedRequest_{false};
 
     bool enableRequestStream_{false};

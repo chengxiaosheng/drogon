@@ -107,7 +107,7 @@ Groups::Groups(const Row &r, const ssize_t indexOffset) noexcept
         size_t offset = (size_t)indexOffset;
         if (offset + 11 > r.size())
         {
-            LOG_FATAL << "Invalid SQL result for this model";
+            ErrorL << "Invalid SQL result for this model";
             return;
         }
         size_t index;
@@ -180,7 +180,7 @@ Groups::Groups(
 {
     if (pMasqueradingVector.size() != 11)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -403,7 +403,7 @@ void Groups::updateByMasqueradedJson(
 {
     if (pMasqueradingVector.size() != 11)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -1417,7 +1417,7 @@ Json::Value Groups::toMasqueradedJson(
         }
         return ret;
     }
-    LOG_ERROR << "Masquerade failed";
+    ErrorL << "Masquerade failed";
     if (getGroupId())
     {
         ret["group_id"] = (Json::UInt64)getValueOfGroupId();

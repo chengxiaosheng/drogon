@@ -21,8 +21,7 @@
 using namespace drogon::nosql;
 using namespace drogon;
 
-void RedisClientManager::createRedisClients(
-    const std::vector<trantor::EventLoop *> &ioLoops)
+void RedisClientManager::createRedisClients()
 {
     assert(redisClientsMap_.empty());
     assert(redisFastClientsMap_.empty());
@@ -34,12 +33,12 @@ void RedisClientManager::createRedisClients(
                 IOThreadStorage<RedisClientPtr>();
             redisFastClientsMap_[redisInfo.name_].init([&](RedisClientPtr &c,
                                                            size_t idx) {
-                assert(idx == ioLoops[idx]->index());
-                LOG_TRACE << "create fast redis client for the thread " << idx;
+                // assert(idx == ioLoops[idx]->index());
+                TraceL << "create fast redis client for the thread " << idx;
                 c = std::make_shared<RedisClientLockFree>(
                     trantor::InetAddress(redisInfo.addr_, redisInfo.port_),
                     redisInfo.connectionNumber_,
-                    ioLoops[idx],
+                    toolkit::EventPollerPool::Instance()[idx],
                     redisInfo.username_,
                     redisInfo.password_,
                     redisInfo.db_);
@@ -122,7 +121,7 @@ RedisClientManager::~RedisClientManager()
             // the main loop;
             std::promise<void> p;
             auto f = p.get_future();
-            drogon::getIOThreadStorageLoop(index)->runInLoop(
+            drogon::getIOThreadStorageLoop(index)->async(
                 [&clientPtr, &p]() {
                     clientPtr->closeAll();
                     p.set_value();

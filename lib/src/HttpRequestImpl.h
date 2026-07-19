@@ -21,12 +21,12 @@
 #include <drogon/HttpRequest.h>
 #include <drogon/RequestStream.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/InetAddress.h>
 #include <trantor/net/Certificate.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <trantor/utils/MsgBuffer.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <trantor/net/TcpConnection.h>
 #include <algorithm>
 #include <functional>
@@ -64,7 +64,7 @@ class HttpRequestImpl : public HttpRequest
     friend class HttpRequestParser;
     friend class ::HttpRequestImplCacheFileTestAccess;
 
-    explicit HttpRequestImpl(trantor::EventLoop *loop)
+    explicit HttpRequestImpl(const std::shared_ptr<toolkit::EventPoller> &loop)
         : creationDate_(trantor::Date::now()), loop_(loop)
     {
     }
@@ -108,7 +108,7 @@ class HttpRequestImpl : public HttpRequest
         connPtr_.reset();
     }
 
-    trantor::EventLoop *getLoop()
+    std::shared_ptr<toolkit::EventPoller> getLoop()
     {
         return loop_;
     }
@@ -764,7 +764,7 @@ class HttpRequestImpl : public HttpRequest
 
   protected:
     std::string content_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     mutable ContentType contentType_{CT_TEXT_PLAIN};
     mutable bool flagForParsingContentType_{false};
     mutable std::string contentTypeString_;

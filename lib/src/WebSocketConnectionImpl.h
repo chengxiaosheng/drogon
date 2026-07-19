@@ -15,10 +15,12 @@
 #pragma once
 
 #include "impl_forwards.h"
+#include "Poller/Timer.h"
+
 #include <drogon/WebSocketConnection.h>
 #include <json/value.h>
 #include <string_view>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <trantor/net/TcpConnection.h>
 
 namespace drogon
@@ -50,7 +52,7 @@ class WebSocketMessageParser
 class WebSocketConnectionImpl final
     : public WebSocketConnection,
       public std::enable_shared_from_this<WebSocketConnectionImpl>,
-      public trantor::NonCopyable
+      public toolkit::noncopyable
 {
   public:
     explicit WebSocketConnectionImpl(const trantor::TcpConnectionPtr &conn,
@@ -102,8 +104,7 @@ class WebSocketConnectionImpl final
 
     void onClose()
     {
-        if (pingTimerId_ != trantor::InvalidTimerId)
-            tcpConnectionPtr_->getLoop()->invalidateTimer(pingTimerId_);
+        pingTimerId_.reset();
         closeCallback_(shared_from_this());
     }
 
@@ -113,7 +114,7 @@ class WebSocketConnectionImpl final
     trantor::InetAddress peerAddr_;
     bool isServer_{true};
     WebSocketMessageParser parser_;
-    trantor::TimerId pingTimerId_{trantor::InvalidTimerId};
+    std::shared_ptr<toolkit::Timer> pingTimerId_{nullptr};
     std::vector<uint32_t> masks_;
     std::atomic<bool> usingMask_;
 

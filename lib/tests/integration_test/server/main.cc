@@ -159,7 +159,7 @@ class Middleware4 : public drogon::HttpMiddleware<Middleware4, false>
   public:
     Middleware4()
     {
-        LOG_DEBUG << "Middleware4\n";
+        DebugL << "Middleware4\n";
     };
 
     void invoke(const HttpRequestPtr &req,
@@ -220,7 +220,7 @@ int main()
             data.insert("parameters", para);
             auto res = HttpResponse::newHttpViewResponse("ListParaView", data);
             callback(res);
-            LOG_DEBUG << body.data();
+            DebugL << body.data();
             assert(!jsonPtr);
         });
 
@@ -298,49 +298,49 @@ int main()
 
     // AOP example
     app().registerBeginningAdvice(
-        []() { LOG_DEBUG << "Event loop is running!"; });
+        []() { DebugL << "Event loop is running!"; });
     app().registerNewConnectionAdvice([](const trantor::InetAddress &peer,
                                          const trantor::InetAddress &local) {
-        LOG_DEBUG << "New connection: " << peer.toIpPort() << "-->"
+        DebugL << "New connection: " << peer.toIpPort() << "-->"
                   << local.toIpPort();
         return true;
     });
     app().registerPreRoutingAdvice([](const drogon::HttpRequestPtr &req,
                                       drogon::AdviceCallback &&acb,
                                       drogon::AdviceChainCallback &&accb) {
-        LOG_DEBUG << "preRouting1";
+        DebugL << "preRouting1";
         accb();
     });
     app().registerPostRoutingAdvice([](const drogon::HttpRequestPtr &req,
                                        drogon::AdviceCallback &&acb,
                                        drogon::AdviceChainCallback &&accb) {
-        LOG_DEBUG << "postRouting1";
-        LOG_DEBUG << "Matched path=" << req->matchedPathPatternData();
+        DebugL << "postRouting1";
+        DebugL << "Matched path=" << req->matchedPathPatternData();
         for (auto &cookie : req->cookies())
         {
-            LOG_DEBUG << "cookie: " << cookie.first << "=" << cookie.second;
+            DebugL << "cookie: " << cookie.first << "=" << cookie.second;
         }
         accb();
     });
     app().registerPreHandlingAdvice([](const drogon::HttpRequestPtr &req,
                                        drogon::AdviceCallback &&acb,
                                        drogon::AdviceChainCallback &&accb) {
-        LOG_DEBUG << "preHandling1";
+        DebugL << "preHandling1";
         accb();
     });
     app().registerPostHandlingAdvice([](const drogon::HttpRequestPtr &,
                                         const drogon::HttpResponsePtr &resp) {
-        LOG_DEBUG << "postHandling1";
+        DebugL << "postHandling1";
         resp->addHeader("Access-Control-Allow-Origin", "*");
     });
     app().registerPreRoutingAdvice([](const drogon::HttpRequestPtr &req) {
-        LOG_DEBUG << "preRouting observer";
+        DebugL << "preRouting observer";
     });
     app().registerPostRoutingAdvice([](const drogon::HttpRequestPtr &req) {
-        LOG_DEBUG << "postRouting observer";
+        DebugL << "postRouting observer";
     });
     app().registerPreHandlingAdvice([](const drogon::HttpRequestPtr &req) {
-        LOG_DEBUG << "preHanding observer";
+        DebugL << "preHanding observer";
     });
     app().registerSyncAdvice([](const HttpRequestPtr &req) -> HttpResponsePtr {
         static const HttpResponsePtr nullResp;
@@ -355,10 +355,10 @@ int main()
         return nullResp;
     });
     app().registerSessionStartAdvice([](const std::string &sessionId) {
-        LOG_DEBUG << "session start:" << sessionId;
+        DebugL << "session start:" << sessionId;
     });
     app().registerSessionDestroyAdvice([](const std::string &sessionId) {
-        LOG_DEBUG << "session destroy:" << sessionId;
+        DebugL << "session destroy:" << sessionId;
     });
     // Output information of all handlers
     auto handlerInfo = app().getHandlersInfo();
@@ -402,7 +402,7 @@ int main()
         auto addresses = app().getListeners();
         for (auto &address : addresses)
         {
-            LOG_INFO << address.toIpPort() << " LISTEN";
+            InfoL << address.toIpPort() << " LISTEN";
         }
     });
     app().registerCustomExtensionMime("md", "text/markdown");

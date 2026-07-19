@@ -46,7 +46,7 @@ void Client::get(const HttpRequestPtr &,
             callback(resp);
         },
         [](const std::exception &err) {
-            LOG_ERROR << "something failed!!! " << err.what();
+            ErrorL << "something failed!!! " << err.what();
         },
         "get %s",
         key.c_str());
@@ -79,7 +79,7 @@ void Client::post(const HttpRequestPtr &req,
             callback(resp);
         },
         [](const std::exception &err) {
-            LOG_ERROR << "something failed!!! " << err.what();
+            ErrorL << "something failed!!! " << err.what();
         },
         "set %s %s",
         key.c_str(),

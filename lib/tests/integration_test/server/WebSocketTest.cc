@@ -12,10 +12,10 @@ void WebSocketTest::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
                                      const WebSocketMessageType &type)
 {
     // write your application logic here
-    LOG_DEBUG << "new websocket message:" << message;
+    DebugL << "new websocket message:" << message;
     if (type == WebSocketMessageType::Ping)
     {
-        LOG_DEBUG << "recv a ping";
+        DebugL << "recv a ping";
     }
     else if (type == WebSocketMessageType::Text)
     {
@@ -26,7 +26,7 @@ void WebSocketTest::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
 
 void WebSocketTest::handleConnectionClosed(const WebSocketConnectionPtr &conn)
 {
-    LOG_DEBUG << "websocket closed!";
+    DebugL << "websocket closed!";
     auto &s = conn->getContextRef<Subscriber>();
     chatRooms_.unsubscribe(s.chatRoomName_, s.id_);
 }
@@ -34,7 +34,7 @@ void WebSocketTest::handleConnectionClosed(const WebSocketConnectionPtr &conn)
 void WebSocketTest::handleNewConnection(const HttpRequestPtr &req,
                                         const WebSocketConnectionPtr &conn)
 {
-    LOG_DEBUG << "new websocket connection!";
+    DebugL << "new websocket connection!";
     conn->send("haha!!!");
     Subscriber s;
     s.chatRoomName_ = req->getParameter("room_name");

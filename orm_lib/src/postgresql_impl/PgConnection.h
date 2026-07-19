@@ -16,9 +16,9 @@
 
 #include "../DbConnection.h"
 #include <drogon/orm/DbClient.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/Channel.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <libpq-fe.h>
 #include <unordered_map>
 #include <memory>
@@ -41,7 +41,7 @@ class PgConnection : public DbConnection,
   public:
     using MessageCallback =
         std::function<void(const std::string &, const std::string &)>;
-    PgConnection(trantor::EventLoop *loop,
+    PgConnection(const std::shared_ptr<toolkit::EventPoller> &loop,
                  const std::string &connInfo,
                  bool autoBatch);
 
@@ -56,7 +56,7 @@ class PgConnection : public DbConnection,
                  std::function<void(const std::exception_ptr &)>
                      &&exceptCallback) override
     {
-        if (loop_->isInLoopThread())
+        if (loop_->isCurrentThread())
         {
             execSqlInLoop(std::move(sql),
                           paraNum,
@@ -69,7 +69,7 @@ class PgConnection : public DbConnection,
         else
         {
             auto thisPtr = shared_from_this();
-            loop_->queueInLoop(
+            loop_->async(
                 [thisPtr,
                  sql = std::move(sql),
                  paraNum,
@@ -111,7 +111,8 @@ class PgConnection : public DbConnection,
 
     std::string newStmtName()
     {
-        loop_->assertInLoopThread();
+        // loop_->assertInLoopThread();
+        assert(loop_->isCurrentThread());
         return std::to_string(++preparedStatementsID_);
     }
 

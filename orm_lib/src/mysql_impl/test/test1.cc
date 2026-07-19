@@ -1,6 +1,6 @@
 #include <drogon/orm/DbClient.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -27,7 +27,7 @@ int main()
     //         std::cerr << e.base().what() << std::endl;
     //     };
     // }
-    LOG_TRACE << "begin";
+    TraceL << "begin";
     *clientPtr << "select * from users where id!=139 order by id"
                << Mode::Blocking >>
         [](const Result &r) {
@@ -51,8 +51,8 @@ int main()
         [](const DrogonDbException &e) {
             std::cerr << e.base().what() << std::endl;
         };
-    LOG_TRACE << "end";
-    LOG_TRACE << "begin";
+    TraceL << "end";
+    TraceL << "begin";
     *clientPtr << "select * from users where id=? and user_id=? order by id"
                << 139 << "233" << Mode::Blocking >>
         [](const Result &r) {
@@ -104,7 +104,7 @@ int main()
                 std::cerr << e.base().what() << std::endl;
             };
     }
-    LOG_DEBUG << "out of transaction block";
+    DebugL << "out of transaction block";
     *clientPtr << "select * from users where id=1000" >> [](const Result &r) {
         std::cout << "file:" << r[0]["file"].as<std::string>() << std::endl;
     } >> [](const DrogonDbException &e) {
@@ -123,6 +123,6 @@ int main()
         [](const DrogonDbException &e) {
             std::cerr << e.base().what() << std::endl;
         };
-    LOG_TRACE << "end";
+    TraceL << "end";
     getchar();
 }

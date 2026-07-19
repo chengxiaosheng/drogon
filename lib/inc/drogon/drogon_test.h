@@ -1,5 +1,5 @@
 #pragma once
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <drogon/DrObject.h>
 #include <drogon/exports.h>
 
@@ -9,6 +9,7 @@
 #include <atomic>
 #include <string_view>
 #include <cstddef>
+#include <iostream>
 
 /**
  * @brief Drogon Test is a minimal effort test framework developed because the
@@ -294,7 +295,7 @@ class DROGON_EXPORT ThreadSafeStream final
 DROGON_EXPORT ThreadSafeStream print();
 DROGON_EXPORT ThreadSafeStream printErr();
 
-class CaseBase : public trantor::NonCopyable
+class CaseBase : public toolkit::noncopyable
 {
   public:
     CaseBase() = default;

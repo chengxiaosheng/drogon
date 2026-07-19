@@ -25,7 +25,7 @@ std::shared_ptr<RedisClient> RedisClient::newRedisClient(
     const unsigned int /*db*/,
     const std::string & /*username*/)
 {
-    LOG_FATAL << "Redis is not supported by drogon, please install the "
+    ErrorL << "Redis is not supported by drogon, please install the "
                  "hiredis library first.";
     abort();
 }

@@ -59,7 +59,7 @@ int main()
         },
         {Post});
 
-    LOG_INFO << "Server running on 127.0.0.1:8848";
+    InfoL << "Server running on 127.0.0.1:8848";
     app()
         // All sessions are stored for 24 Hours
         .enableSession(24h)

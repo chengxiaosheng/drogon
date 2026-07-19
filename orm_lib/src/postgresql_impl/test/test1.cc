@@ -1,6 +1,6 @@
 #include <drogon/orm/DbClient.h>
 #include <iostream>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <thread>
 #include <chrono>
 using namespace std::chrono_literals;
@@ -12,7 +12,7 @@ int main()
     auto clientPtr =
         DbClient::newPgClient("host=127.0.0.1 port=5432 dbname=test user=antao",
                               3);
-    LOG_DEBUG << "start!";
+    DebugL << "start!";
     std::this_thread::sleep_for(1s);
     *clientPtr << "update group_users set join_date=$1,relationship=$2 where "
                   "g_uuid=420040 and u_uuid=2"
@@ -38,7 +38,7 @@ int main()
     }
     catch (const drogon::orm::DrogonDbException &e)
     {
-        LOG_DEBUG << "catch:" << e.base().what();
+        DebugL << "catch:" << e.base().what();
     }
 
     // client << "select count(*) from users" >> [](const drogon::orm::Result
@@ -52,7 +52,7 @@ int main()
     //         }
     //     }
     // } >> [](const drogon::orm::DrogonDbException &e) {
-    //     LOG_DEBUG << "except callback:" << e.base().what();
+    //     DebugL << "except callback:" << e.base().what();
     // };
 
     // client << "select * from users limit 5" >> [](const drogon::orm::Result
@@ -66,7 +66,7 @@ int main()
     //         }
     //     }
     // } >> [](const drogon::orm::DrogonDbException &e) {
-    //     LOG_DEBUG << "except callback:" << e.base().what();
+    //     DebugL << "except callback:" << e.base().what();
     // };
 
     // client << "select user_id,user_uuid from users where user_uuid=$1"
@@ -77,13 +77,13 @@ int main()
     //     else
     //         std::cout << "no more!" << std::endl;
     // } >> [](const drogon::orm::DrogonDbException &e) {
-    //     LOG_DEBUG << "except callback:" << e.base().what();
+    //     DebugL << "except callback:" << e.base().what();
     // };
 
     // client.execSqlAsync("",
     //                     [](const drogon::orm::Result &r) {},
     //                     [](const drogon::orm::DrogonDbException &e) {
-    //                         LOG_DEBUG << "async blocking except callback:" <<
+    //                         DebugL << "async blocking except callback:" <<
     //                         e.base().what();
     //                     },
     //                     true);
@@ -103,7 +103,7 @@ int main()
     }
     catch (const drogon::orm::DrogonDbException &e)
     {
-        LOG_DEBUG << "future exception:" << e.base().what();
+        DebugL << "future exception:" << e.base().what();
     }
     // client << "\\d users"
     // >>[](const Result &r)
@@ -117,10 +117,10 @@ int main()
     clientPtr->execSqlAsync(
         "select * from users where user_uuid=$1;",
         [](const drogon::orm::Result &r) {
-            LOG_DEBUG << "row count:" << r.size();
+            DebugL << "row count:" << r.size();
         },
         [](const drogon::orm::DrogonDbException &e) {
-            LOG_DEBUG << "async nonblocking except callback:"
+            DebugL << "async nonblocking except callback:"
                       << e.base().what();
         },
         1);

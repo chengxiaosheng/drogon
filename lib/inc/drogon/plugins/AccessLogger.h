@@ -9,7 +9,6 @@
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
 #include <drogon/plugins/Plugin.h>
-#include <trantor/utils/AsyncFileLogger.h>
 #include <vector>
 #include <regex>
 
@@ -116,7 +115,7 @@ class DROGON_EXPORT AccessLogger : public drogon::Plugin<AccessLogger>
     void shutdown() override;
 
   private:
-    trantor::AsyncFileLogger asyncFileLogger_;
+    std::shared_ptr<toolkit::Logger> logger_;
     int logIndex_{0};
     bool useLocalTime_{true};
     bool showMicroseconds_{true};
@@ -126,94 +125,94 @@ class DROGON_EXPORT AccessLogger : public drogon::Plugin<AccessLogger>
     std::regex exemptRegex_;
     bool regexFlag_{false};
 
-    using LogFunction = std::function<void(trantor::LogStream &,
+    using LogFunction = std::function<void(toolkit::LogContextCapture &,
                                            const drogon::HttpRequestPtr &,
                                            const drogon::HttpResponsePtr &)>;
     std::vector<LogFunction> logFunctions_;
-    void logging(trantor::LogStream &stream,
+    void logging(toolkit::LogContextCapture &stream,
                  const drogon::HttpRequestPtr &req,
                  const drogon::HttpResponsePtr &resp);
     void createLogFunctions(std::string format);
     LogFunction newLogFunction(const std::string &placeholder);
     std::map<std::string, LogFunction> logFunctionMap_;
     //$request_path
-    static void outputReqPath(trantor::LogStream &,
+    static void outputReqPath(toolkit::LogContextCapture &,
                               const drogon::HttpRequestPtr &,
                               const drogon::HttpResponsePtr &);
     //$request_query
-    static void outputReqQuery(trantor::LogStream &,
+    static void outputReqQuery(toolkit::LogContextCapture &,
                                const drogon::HttpRequestPtr &,
                                const drogon::HttpResponsePtr &);
     //$request_url
-    static void outputReqURL(trantor::LogStream &,
+    static void outputReqURL(toolkit::LogContextCapture &,
                              const drogon::HttpRequestPtr &,
                              const drogon::HttpResponsePtr &);
     //$version
-    static void outputVersion(trantor::LogStream &,
+    static void outputVersion(toolkit::LogContextCapture &,
                               const drogon::HttpRequestPtr &,
                               const drogon::HttpResponsePtr &);
     //$request
-    static void outputReqLine(trantor::LogStream &,
+    static void outputReqLine(toolkit::LogContextCapture &,
                               const drogon::HttpRequestPtr &,
                               const drogon::HttpResponsePtr &);
     //$date
-    void outputDate(trantor::LogStream &,
+    void outputDate(toolkit::LogContextCapture &,
                     const drogon::HttpRequestPtr &,
                     const drogon::HttpResponsePtr &) const;
     //$request_date
-    void outputReqDate(trantor::LogStream &,
+    void outputReqDate(toolkit::LogContextCapture &,
                        const drogon::HttpRequestPtr &,
                        const drogon::HttpResponsePtr &) const;
     //$remote_addr
-    static void outputRemoteAddr(trantor::LogStream &,
+    static void outputRemoteAddr(toolkit::LogContextCapture &,
                                  const drogon::HttpRequestPtr &,
                                  const drogon::HttpResponsePtr &);
     //$local_addr
-    static void outputLocalAddr(trantor::LogStream &,
+    static void outputLocalAddr(toolkit::LogContextCapture &,
                                 const drogon::HttpRequestPtr &,
                                 const drogon::HttpResponsePtr &);
     //$request_len $body_bytes_received
-    static void outputReqLength(trantor::LogStream &,
+    static void outputReqLength(toolkit::LogContextCapture &,
                                 const drogon::HttpRequestPtr &,
                                 const drogon::HttpResponsePtr &);
     //$response_len $body_bytes_sent
-    static void outputRespLength(trantor::LogStream &,
+    static void outputRespLength(toolkit::LogContextCapture &,
                                  const drogon::HttpRequestPtr &,
                                  const drogon::HttpResponsePtr &);
     //$method
-    static void outputMethod(trantor::LogStream &,
+    static void outputMethod(toolkit::LogContextCapture &,
                              const drogon::HttpRequestPtr &,
                              const drogon::HttpResponsePtr &);
     //$thread
-    static void outputThreadNumber(trantor::LogStream &,
+    static void outputThreadNumber(toolkit::LogContextCapture &,
                                    const drogon::HttpRequestPtr &,
                                    const drogon::HttpResponsePtr &);
     //$http_[header_name]
-    static void outputReqHeader(trantor::LogStream &stream,
+    static void outputReqHeader(toolkit::LogContextCapture &stream,
                                 const drogon::HttpRequestPtr &req,
                                 const std::string &headerName);
     //$cookie_[cookie_name]
-    static void outputReqCookie(trantor::LogStream &stream,
+    static void outputReqCookie(toolkit::LogContextCapture &stream,
                                 const drogon::HttpRequestPtr &req,
                                 const std::string &cookie);
     //$upstream_http_[header_name]
-    static void outputRespHeader(trantor::LogStream &stream,
+    static void outputRespHeader(toolkit::LogContextCapture &stream,
                                  const drogon::HttpResponsePtr &resp,
                                  const std::string &headerName);
     //$status
-    static void outputStatusString(trantor::LogStream &,
+    static void outputStatusString(toolkit::LogContextCapture &,
                                    const drogon::HttpRequestPtr &,
                                    const drogon::HttpResponsePtr &);
     //$status_code
-    static void outputStatusCode(trantor::LogStream &,
+    static void outputStatusCode(toolkit::LogContextCapture &,
                                  const drogon::HttpRequestPtr &,
                                  const drogon::HttpResponsePtr &);
     //$processing_time
-    static void outputProcessingTime(trantor::LogStream &,
+    static void outputProcessingTime(toolkit::LogContextCapture &,
                                      const drogon::HttpRequestPtr &,
                                      const drogon::HttpResponsePtr &);
     //$upstream_http_content-type $upstream_http_content_type
-    static void outputRespContentType(trantor::LogStream &,
+    static void outputRespContentType(toolkit::LogContextCapture &,
                                       const drogon::HttpRequestPtr &,
                                       const drogon::HttpResponsePtr &);
 };

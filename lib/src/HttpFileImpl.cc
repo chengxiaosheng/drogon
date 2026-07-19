@@ -55,24 +55,24 @@ int HttpFileImpl::save(const std::string &path) const noexcept
 
     if (!std::filesystem::exists(fsUploadDir))
     {
-        LOG_TRACE << "create path:" << fsUploadDir;
+        TraceL << "create path:" << fsUploadDir;
         std::error_code err;
         std::filesystem::create_directories(fsUploadDir, err);
         if (err)
         {
-            LOG_SYSERR;
+            ErrorL;
             return -1;
         }
     }
 
     std::filesystem::path fsSaveToPath(std::filesystem::weakly_canonical(
         fsUploadDir / utils::toNativePath(fileName_)));
-    LOG_TRACE << "save to path:" << fsSaveToPath;
+    TraceL << "save to path:" << fsSaveToPath;
     if (!std::equal(fsUploadDir.begin(),
                     fsUploadDir.end(),
                     fsSaveToPath.begin()))
     {
-        LOG_ERROR
+        ErrorL
             << "Attempt writing outside of upload directory detected. Path: "
             << fileName_;
         return -1;
@@ -96,12 +96,12 @@ int HttpFileImpl::saveAs(const std::string &fileName) const noexcept
     if (fsFileName.has_parent_path() &&
         !std::filesystem::exists(fsFileName.parent_path()))
     {
-        LOG_TRACE << "create path:" << fsFileName.parent_path();
+        TraceL << "create path:" << fsFileName.parent_path();
         std::error_code err;
         std::filesystem::create_directories(fsFileName.parent_path(), err);
         if (err)
         {
-            LOG_SYSERR;
+            ErrorL;
             return -1;
         }
     }
@@ -111,7 +111,7 @@ int HttpFileImpl::saveAs(const std::string &fileName) const noexcept
 int HttpFileImpl::saveTo(
     const std::filesystem::path &pathAndFileName) const noexcept
 {
-    LOG_TRACE << "save uploaded file:" << pathAndFileName;
+    TraceL << "save uploaded file:" << pathAndFileName;
     auto wPath = utils::toNativePath(pathAndFileName.native());
     std::ofstream file(wPath, std::ios::binary);
     if (file.is_open())
@@ -122,7 +122,7 @@ int HttpFileImpl::saveTo(
     }
     else
     {
-        LOG_ERROR << "save failed!";
+        ErrorL << "save failed!";
         return -1;
     }
 }

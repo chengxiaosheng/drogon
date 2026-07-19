@@ -20,7 +20,7 @@
 #include <drogon/drogon.h>
 #include <drogon/orm/DbClient.h>
 #include <drogon/orm/Exception.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/Channel.h>
 #include <exception>
 #include <memory>
@@ -42,7 +42,7 @@
 using namespace drogon::orm;
 
 DbClientLockFree::DbClientLockFree(const std::string &connInfo,
-                                   trantor::EventLoop *loop,
+                                   const std::shared_ptr<toolkit::EventPoller> &loop,
                                    ClientType type,
 #if LIBPQ_SUPPORTS_BATCH_MODE
                                    size_t connectionNumberPerLoop,
@@ -58,17 +58,17 @@ DbClientLockFree::DbClientLockFree(const std::string &connInfo,
       numberOfConnections_(connectionNumberPerLoop)
 {
     type_ = type;
-    LOG_TRACE << "type=" << (int)type;
+    TraceL << "type=" << (int)type;
     if (type == ClientType::PostgreSQL || type == ClientType::Mysql)
     {
-        loop_->queueInLoop([this]() {
+        loop_->async([this]() {
             for (size_t i = 0; i < numberOfConnections_; ++i)
                 newConnection();
-        });
+        }, false);
     }
     else
     {
-        LOG_ERROR << "No supported database type:" << (int)type;
+        ErrorL << "No supported database type:" << (int)type;
     }
 }
 
@@ -100,7 +100,8 @@ void DbClientLockFree::execSql(
     assert(paraNum == length.size());
     assert(paraNum == format.size());
     assert(rcb);
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     if (timeout_ > 0.0)
     {
         execSqlWithTimeout(sql,
@@ -165,8 +166,8 @@ void DbClientLockFree::execSql(
                             }
                             else
                             {
-                                loop_->queueInLoop(
-                                    [rcb = std::move(rcb), r]() { rcb(r); });
+                                loop_->async(
+                                    [rcb = std::move(rcb), r]() { rcb(r); }, false);
                             }
                         },
                         std::move(exceptCallback));
@@ -209,7 +210,7 @@ void DbClientLockFree::execSql(
         return;
     }
 
-    // LOG_TRACE << "Push query to buffer";
+    // TraceL << "Push query to buffer";
     sqlCmdBuffer_.emplace_back(std::make_shared<SqlCmd>(
         std::string_view{sql, sqlLength},
         paraNum,
@@ -223,7 +224,7 @@ void DbClientLockFree::execSql(
             }
             else
             {
-                loop_->queueInLoop([rcb = std::move(rcb), r]() { rcb(r); });
+                loop_->async([rcb = std::move(rcb), r]() { rcb(r); }, false);
             }
         },
         std::move(exceptCallback)));
@@ -234,7 +235,7 @@ std::shared_ptr<Transaction> DbClientLockFree::newTransaction(
     TransactionType) noexcept(false)
 {
     // Don't support transaction;
-    LOG_ERROR
+    ErrorL
         << "You can't use the synchronous interface in the fast Database "
            "client, please use the asynchronous version (newTransactionAsync)";
     assert(0);
@@ -245,7 +246,8 @@ void DbClientLockFree::newTransactionAsync(
     const std::function<void(const std::shared_ptr<Transaction> &)> &callback,
     TransactionType transType)
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     for (auto &conn : connections_)
     {
         if (!conn->isWorking() && transSet_.find(conn) == transSet_.end())
@@ -331,7 +333,7 @@ void DbClientLockFree::makeTrans(
             {
                 if (connPtr == conn)
                 {
-                    conn->loop()->queueInLoop([weakThis, conn]() {
+                    conn->loop()->async([weakThis, conn]() {
                         auto thisPtr = weakThis.lock();
                         if (!thisPtr)
                             return;
@@ -347,7 +349,7 @@ void DbClientLockFree::makeTrans(
                         });
                         thisPtr->transSet_.erase(conn);
                         thisPtr->handleNewTask(conn);
-                    });
+                    }, false);
                     break;
                 }
             }
@@ -359,8 +361,8 @@ void DbClientLockFree::makeTrans(
     {
         trans->setTimeout(timeout_);
     }
-    conn->loop()->queueInLoop(
-        [callback = std::move(callback), trans] { callback(trans); });
+    conn->loop()->async(
+        [callback = std::move(callback), trans] { callback(trans); }, false);
 }
 
 void DbClientLockFree::handleNewTask(const DbConnectionPtr &conn)
@@ -465,15 +467,16 @@ DbConnectionPtr DbClientLockFree::newConnection()
 
         thisPtr->transSet_.erase(closeConnPtr);
         // Reconnect after 1 second
-        thisPtr->loop_->runAfter(1, [weakPtr, closeConnPtr] {
+        thisPtr->loop_->doDelayTask(1 * 1000, [weakPtr, closeConnPtr] {
             auto thisPtr = weakPtr.lock();
             if (!thisPtr)
-                return;
+                return 0;
             thisPtr->newConnection();
+            return 0;
         });
     });
     connPtr->setOkCallback([weakPtr](const DbConnectionPtr &okConnPtr) {
-        LOG_TRACE << "connected!";
+        TraceL << "connected!";
         auto thisPtr = weakPtr.lock();
         if (!thisPtr)
             return;
@@ -610,9 +613,9 @@ void DbClientLockFree::execSqlWithTimeout(
                             }
                             else
                             {
-                                loop_->queueInLoop(
+                                loop_->async(
                                     [resultCallback = std::move(resultCallback),
-                                     r]() { resultCallback(r); });
+                                     r]() { resultCallback(r); }, false);
                             }
                         },
                         std::move(exceptionCallback));
@@ -656,7 +659,7 @@ void DbClientLockFree::execSqlWithTimeout(
         return;
     }
 
-    // LOG_TRACE << "Push query to buffer";
+    // TraceL << "Push query to buffer";
     auto cmdPtr = std::make_shared<SqlCmd>(
         std::string_view{sql, sqlLength},
         paraNum,
@@ -670,8 +673,8 @@ void DbClientLockFree::execSqlWithTimeout(
             }
             else
             {
-                loop_->queueInLoop([resultCallback = std::move(resultCallback),
-                                    r]() { resultCallback(r); });
+                loop_->async([resultCallback = std::move(resultCallback),
+                                    r]() { resultCallback(r); }, false);
             }
         },
         std::move(exceptionCallback));

@@ -13,7 +13,7 @@
  */
 
 #include "HttpConnectionLimit.h"
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 using namespace drogon;
 

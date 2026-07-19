@@ -18,7 +18,7 @@ class BeginAdviceTest : public drogon::HttpSimpleController<BeginAdviceTest>
     PATH_LIST_END
     BeginAdviceTest()
     {
-        LOG_DEBUG << "BeginAdviceTest constructor";
+        DebugL << "BeginAdviceTest constructor";
     }
 
     static void setContent(const std::string &content)

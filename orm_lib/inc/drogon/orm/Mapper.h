@@ -306,7 +306,7 @@ class Mapper
         }
         else
         {
-            LOG_FATAL << "The table must have a primary key";
+            ErrorL << "The table must have a primary key";
             abort();
         }
     }
@@ -359,7 +359,7 @@ class Mapper
         }
         else
         {
-            LOG_FATAL << "The table must have a primary key";
+            ErrorL << "The table must have a primary key";
             abort();
         }
     }
@@ -421,7 +421,7 @@ class Mapper
         }
         else
         {
-            LOG_FATAL << "The table must have a primary key";
+            ErrorL << "The table must have a primary key";
             abort();
         }
     }

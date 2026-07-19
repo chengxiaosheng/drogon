@@ -19,7 +19,6 @@
 #include <drogon/utils/Utilities.h>
 #include <drogon/version.h>
 #include <json/json.h>
-#include <trantor/utils/AsyncFileLogger.h>
 #include <algorithm>
 #include "AOPAdvice.h"
 #include "ConfigLoader.h"
@@ -83,17 +82,18 @@ HttpAppFrameworkImpl::HttpAppFrameworkImpl()
       pluginsManagerPtr_(new PluginsManager),
       dbClientManagerPtr_(new orm::DbClientManager),
       redisClientManagerPtr_(new nosql::RedisClientManager),
-      uploadPath_(rootPath_ + "uploads")
+      uploadPath_(rootPath_ + "uploads"),
+      main_poller_(toolkit::EventPoller::createMainPoller())
 {
 }
 
 static std::function<void()> f = [] {
-    LOG_TRACE << "Initialize the main event loop in the main thread";
+    TraceL << "Initialize the main event loop in the main thread";
 };
 
 /// Make sure that the main event loop is initialized in the main thread.
 drogon::InitBeforeMainFunction drogon::HttpAppFrameworkImpl::initFirst_([]() {
-    HttpAppFrameworkImpl::instance().getLoop()->runInLoop(f);
+    HttpAppFrameworkImpl::instance().getLoop()->async(f);
 });
 
 namespace drogon
@@ -121,7 +121,7 @@ void defaultExceptionHandler(
     std::string pathWithQuery = req->path();
     if (req->query().empty() == false)
         pathWithQuery += "?" + req->query();
-    LOG_ERROR << "Unhandled exception in " << pathWithQuery
+    ErrorL << "Unhandled exception in " << pathWithQuery
               << ", what(): " << e.what();
     const auto &handler = app().getCustomErrorHandler();
     callback(handler(k500InternalServerError, req));
@@ -158,7 +158,7 @@ static void godaemon()
     (void)ret;
     umask(0);
 #else
-    LOG_ERROR << "Cannot run as daemon in Windows";
+    ErrorL << "Cannot run as daemon in Windows";
     exit(1);
 #endif
 
@@ -169,12 +169,12 @@ static void TERMFunction(int sig)
 {
     if (sig == SIGTERM)
     {
-        LOG_WARN << "SIGTERM signal received.";
+        WarnL << "SIGTERM signal received.";
         HttpAppFrameworkImpl::instance().getTermSignalHandler()();
     }
     else if (sig == SIGINT)
     {
-        LOG_WARN << "SIGINT signal received.";
+        WarnL << "SIGINT signal received.";
         HttpAppFrameworkImpl::instance().getIntSignalHandler()();
     }
 }
@@ -266,7 +266,7 @@ HttpAppFramework &HttpAppFrameworkImpl::enableDynamicViewsLoading(
     {
         if (drogon::utils::createPath(libFileOutputPath_) == -1)
         {
-            LOG_FATAL << "Can't create " << libFileOutputPath_
+            ErrorL << "Can't create " << libFileOutputPath_
                       << " path for dynamic views";
             exit(-1);
         }
@@ -484,15 +484,15 @@ HttpAppFramework &HttpAppFrameworkImpl::setLogPath(
 }
 
 HttpAppFramework &HttpAppFrameworkImpl::setLogLevel(
-    trantor::Logger::LogLevel level)
+    toolkit::LogLevel level)
 {
-    trantor::Logger::setLogLevel(level);
+    toolkit::Logger::Instance().setLevel(level);
     return *this;
 }
 
 HttpAppFramework &HttpAppFrameworkImpl::setLogLocalTime(bool on)
 {
-    trantor::Logger::setDisplayLocalTime(on);
+    // trantor::Logger::setDisplayLocalTime(on);
     return *this;
 }
 
@@ -519,11 +519,14 @@ HttpAppFramework &HttpAppFrameworkImpl::reloadSSLFiles()
 
 void HttpAppFrameworkImpl::run()
 {
-    if (!getLoop()->isInLoopThread())
+    if (!getLoop()->isCurrentThread())
     {
-        getLoop()->moveToCurrentThread();
+        getLoop()->async([]() {
+           instance().run();
+        });
+        return;
     }
-    LOG_TRACE << "Start to run...";
+    TraceL << "Start to run...";
     // Create dirs for cache files
     for (int i = 0; i < 256; ++i)
     {
@@ -541,7 +544,7 @@ void HttpAppFrameworkImpl::run()
 #ifdef __linux__
         getLoop()->resetTimerQueue();
 #endif
-        getLoop()->resetAfterFork();
+        // getLoop()->resetAfterFork();
     }
     // set relaunching
     if (relaunchOnError_)
@@ -553,7 +556,7 @@ void HttpAppFrameworkImpl::run()
             auto child_pid = fork();
             if (child_pid < 0)
             {
-                LOG_ERROR << "fork error";
+                ErrorL << "fork error";
                 abort();
             }
             else if (child_pid == 0)
@@ -563,7 +566,7 @@ void HttpAppFrameworkImpl::run()
             }
             waitpid(child_pid, &child_status, 0);
             sleep(1);
-            LOG_INFO << "start new process";
+            InfoL << "start new process";
         }
 #ifdef __linux__
         getLoop()->resetTimerQueue();
@@ -583,12 +586,12 @@ void HttpAppFrameworkImpl::run()
         sa.sa_flags = 0;
         if (sigaction(SIGINT, &sa, NULL) == -1)
         {
-            LOG_ERROR << "sigaction() failed, can't set SIGINT handler";
+            ErrorL << "sigaction() failed, can't set SIGINT handler";
             abort();
         }
         if (sigaction(SIGTERM, &sa, NULL) == -1)
         {
-            LOG_ERROR << "sigaction() failed, can't set SIGTERM handler";
+            ErrorL << "sigaction() failed, can't set SIGTERM handler";
             abort();
         }
 #endif
@@ -596,7 +599,7 @@ void HttpAppFrameworkImpl::run()
     setupFileLogger();
     if (relaunchOnError_)
     {
-        LOG_INFO << "Start child process";
+        InfoL << "Start child process";
     }
 
 #if !defined(_WIN32) && !TARGET_OS_IOS
@@ -609,27 +612,29 @@ void HttpAppFrameworkImpl::run()
 #endif
 
     // Create IO threads
-    ioLoopThreadPool_ =
-        std::make_unique<trantor::EventLoopThreadPool>(threadNum_,
-                                                       "DrogonIoLoop");
-    std::vector<trantor::EventLoop *> ioLoops = ioLoopThreadPool_->getLoops();
-    for (size_t i = 0; i < threadNum_; ++i)
-    {
-        ioLoops[i]->setIndex(i);
-    }
-    getLoop()->setIndex(threadNum_);
+    toolkit::EventPollerPool::setPoolSize(threadNum_);
+    // ioLoopThreadPool_ =
+    //     std::make_unique<trantor::EventLoopThreadPool>(threadNum_,
+    //                                                    "DrogonIoLoop");
+    // std::vector<trantor::EventLoop *> ioLoops = ioLoopThreadPool_->getLoops();
+    // for (size_t i = 0; i < threadNum_; ++i)
+    // {
+    //     ioLoops[i]->setIndex(i);
+    // }
+    // getLoop()->setIndex(threadNum_);
 
     // Create all listeners.
     listenerManagerPtr_->createListeners(sslCertPath_,
                                          sslKeyPath_,
-                                         sslConfCmds_,
-                                         ioLoops);
+                                         sslConfCmds_/*,
+                                         ioLoops*/);
 
     // A fast database client instance should be created in the main event
     // loop, so put the main loop into ioLoops.
-    ioLoops.push_back(getLoop());
-    dbClientManagerPtr_->createDbClients(ioLoops);
-    redisClientManagerPtr_->createRedisClients(ioLoops);
+    // ioLoops.push_back(getLoop());
+
+    dbClientManagerPtr_->createDbClients(/*ioLoops*/);
+    redisClientManagerPtr_->createRedisClients(/*ioLoops*/);
     if (useSession_)
     {
         sessionManagerPtr_ =
@@ -662,16 +667,16 @@ void HttpAppFrameworkImpl::run()
     {
         pluginsManagerPtr_->initializeAllPlugins(pluginConfig,
                                                  [](PluginBase *plugin) {
-                                                     LOG_TRACE
+                                                     TraceL
                                                          << "new plugin:"
                                                          << plugin->className();
                                                      // TODO: new plugin
                                                  });
     }
     routersInit_ = true;
-    HttpControllersRouter::instance().init(ioLoops);
-    StaticFileRouter::instance().init(ioLoops);
-    getLoop()->queueInLoop([this]() {
+    HttpControllersRouter::instance().init(/*ioLoops*/);
+    StaticFileRouter::instance().init(/*ioLoops*/);
+    getLoop()->async([this]() {
         for (auto &adv : beginningAdvices_)
         {
             adv();
@@ -679,14 +684,14 @@ void HttpAppFrameworkImpl::run()
         beginningAdvices_.clear();
         // Let listener event loops run when everything is ready.
         listenerManagerPtr_->startListening();
-    });
+    }, false);
     // start all loops
     // TODO: when should IOLoops start?
     // In before, IOLoops are started in `listenerManagerPtr_->startListening()`
     // It should be fine for them to start anywhere before `startListening()`.
     // However, we should consider other components.
-    ioLoopThreadPool_->start();
-    getLoop()->loop();
+    // ioLoopThreadPool_->start();
+    getLoop()->runMainLoop();
 }
 
 HttpAppFramework &HttpAppFrameworkImpl::setUploadPath(
@@ -804,27 +809,14 @@ HttpResponsePtr HttpAppFrameworkImpl::handleSessionForResponse(
     }
 }
 
-trantor::EventLoop *HttpAppFrameworkImpl::getLoop() const
+std::shared_ptr<toolkit::EventPoller> HttpAppFrameworkImpl::getLoop() const
 {
-    static trantor::EventLoop loop;
-    return &loop;
+    return main_poller_;
 }
 
-trantor::EventLoop *HttpAppFrameworkImpl::getIOLoop(size_t id) const
+std::shared_ptr<toolkit::EventPoller> HttpAppFrameworkImpl::getIOLoop(size_t id) const
 {
-    if (!ioLoopThreadPool_)
-    {
-        LOG_WARN << "Please call getIOLoop() after drogon::app().run()";
-        return nullptr;
-    }
-    auto n = ioLoopThreadPool_->size();
-    if (id >= n)
-    {
-        LOG_TRACE << "Loop id (" << id << ") out of range [0-" << n << ").";
-        id %= n;
-        LOG_TRACE << "Rounded to : " << id;
-    }
-    return ioLoopThreadPool_->getLoop(id);
+    return toolkit::EventPollerPool::Instance()[id];
 }
 
 HttpAppFramework &HttpAppFramework::instance()
@@ -869,10 +861,7 @@ void HttpAppFrameworkImpl::forward(
             }
             else
             {
-                clientPtr = std::make_shared<HttpClientImpl>(
-                    trantor::EventLoop::getEventLoopOfCurrentThread()
-                        ? trantor::EventLoop::getEventLoopOfCurrentThread()
-                        : getLoop(),
+                clientPtr = std::make_shared<HttpClientImpl>(toolkit::EventPollerPool::Instance().getPoller(),
                     hostString);
                 clientsMap[hostString] = clientPtr;
             }
@@ -1002,7 +991,7 @@ void HttpAppFrameworkImpl::addDbClient(
     }
     else
     {
-        LOG_ERROR << "Unsupported database type: " << dbType
+        ErrorL << "Unsupported database type: " << dbType
                   << ", should be one of (postgresql, mysql, sqlite3)";
     }
 }
@@ -1033,9 +1022,9 @@ HttpAppFramework &HttpAppFrameworkImpl::createRedisClient(
 
 void HttpAppFrameworkImpl::quit()
 {
-    if (getLoop()->isRunning() && running_.exchange(false))
+    if (/*getLoop()->isRunning() &&*/ main_poller_ && running_.exchange(false))
     {
-        getLoop()->queueInLoop([this]() {
+        getLoop()->async([this]() {
             // Release members in the reverse order of initialization
             listenerManagerPtr_->stopListening();
             listenerManagerPtr_.reset();
@@ -1044,14 +1033,15 @@ void HttpAppFrameworkImpl::quit()
             pluginsManagerPtr_.reset();
             redisClientManagerPtr_.reset();
             dbClientManagerPtr_.reset();
-            getLoop()->quit();
-            for (trantor::EventLoop *loop : ioLoopThreadPool_->getLoops())
-            {
-                loop->quit();
-            }
-            ioLoopThreadPool_->wait();
-        });
+            // getLoop()->quit();
+            // for (trantor::EventLoop *loop : ioLoopThreadPool_->getLoops())
+            // {
+            //     loop->quit();
+            // }
+            // ioLoopThreadPool_->wait();
+        }, false);
     }
+    main_poller_.reset();
 }
 
 const HttpResponsePtr &HttpAppFrameworkImpl::getCustom404Page()
@@ -1060,7 +1050,7 @@ const HttpResponsePtr &HttpAppFrameworkImpl::getCustom404Page()
     {
         return custom404_;
     }
-    auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
+    auto loop = toolkit::EventPollerPool::Instance().getPoller();
     if (loop && loop->index() < app().getThreadNum())
     {
         // If the current thread is an IO thread
@@ -1162,13 +1152,13 @@ HttpAppFramework &HttpAppFrameworkImpl::setupFileLogger()
                 if (!std::filesystem::create_directories(fsLogPath, fsErr) &&
                     fsErr)
                 {
-                    LOG_ERROR << "could not create log file path";
+                    ErrorL << "could not create log file path";
                     abort();
                 }
                 // 2. check if we have rights to create files in the folder
                 if (os_access(fsLogPath.native().c_str(), W_OK) != 0)
                 {
-                    LOG_ERROR << "cannot create files in log folder";
+                    ErrorL << "cannot create files in log folder";
                     abort();
                 }
                 std::filesystem::path baseName(logfileBaseName_);
@@ -1212,27 +1202,36 @@ HttpAppFramework &HttpAppFrameworkImpl::setupFileLogger()
         // permissions, so keep existing code
         if (os_access(utils::toNativePath(logPath_).c_str(), R_OK | W_OK) != 0)
         {
-            LOG_ERROR << "log file path not exist";
+            ErrorL << "log file path not exist";
             abort();
         }
         else
         {
-            std::string baseName = logfileBaseName_;
-            if (baseName.empty())
-            {
-                baseName = "drogon";
-            }
-            asyncFileLoggerPtr_ = std::make_shared<trantor::AsyncFileLogger>();
-            asyncFileLoggerPtr_->setFileName(baseName, ".log", logPath_);
-            asyncFileLoggerPtr_->startLogging();
-            asyncFileLoggerPtr_->setFileSizeLimit(logfileSize_);
-            asyncFileLoggerPtr_->setMaxFiles(logfileMaxNum_);
-            trantor::Logger::setOutputFunction(
-                [loggerPtr = asyncFileLoggerPtr_](const char *msg,
-                                                  const uint64_t len) {
-                    loggerPtr->output(msg, len);
-                },
-                [loggerPtr = asyncFileLoggerPtr_]() { loggerPtr->flush(); });
+
+            toolkit::Logger::Instance().setWriter(std::make_shared<toolkit::AsyncLogWriter>());
+            toolkit::Logger::Instance().add(std::make_shared<toolkit::ConsoleChannel>());
+            auto file_channel = std::make_shared<toolkit::FileChannel>();
+            toolkit::Logger::Instance().add(file_channel);
+            file_channel->setPath(logPath_);
+            file_channel->setFileMaxSize(logfileSize_ / 1024 / 1024);
+            file_channel->setFileMaxCount(logfileMaxNum_);
+
+            // std::string baseName = logfileBaseName_;
+            // if (baseName.empty())
+            // {
+            //     baseName = "drogon";
+            // }
+            // asyncFileLoggerPtr_ = std::make_shared<trantor::AsyncFileLogger>();
+            // asyncFileLoggerPtr_->setFileName(baseName, ".log", logPath_);
+            // asyncFileLoggerPtr_->startLogging();
+            // asyncFileLoggerPtr_->setFileSizeLimit(logfileSize_);
+            // asyncFileLoggerPtr_->setMaxFiles(logfileMaxNum_);
+            // trantor::Logger::setOutputFunction(
+            //     [loggerPtr = asyncFileLoggerPtr_](const char *msg,
+            //                                       const uint64_t len) {
+            //         loggerPtr->output(msg, len);
+            //     },
+            //     [loggerPtr = asyncFileLoggerPtr_]() { loggerPtr->flush(); });
         }
     }
     return *this;

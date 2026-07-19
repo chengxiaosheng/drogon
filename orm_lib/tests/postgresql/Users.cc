@@ -96,7 +96,7 @@ Users::Users(const Row &r, const ssize_t indexOffset) noexcept
         size_t offset = (size_t)indexOffset;
         if (offset + 9 > r.size())
         {
-            LOG_FATAL << "Invalid SQL result for this model";
+            ErrorL << "Invalid SQL result for this model";
             return;
         }
         size_t index;
@@ -159,7 +159,7 @@ Users::Users(
 {
     if (pMasqueradingVector.size() != 9)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -342,7 +342,7 @@ void Users::updateByMasqueradedJson(
 {
     if (pMasqueradingVector.size() != 9)
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
     if (!pMasqueradingVector[0].empty() &&
@@ -1208,7 +1208,7 @@ Json::Value Users::toMasqueradedJson(
         }
         return ret;
     }
-    LOG_ERROR << "Masquerade failed";
+    ErrorL << "Masquerade failed";
     if (getUserId())
     {
         ret["user_id"] = getValueOfUserId();

@@ -20,12 +20,12 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
     auto lastDate = req->session()->getOptional<trantor::Date>(VDate);
     if (lastDate)
     {
-        LOG_TRACE << "last:" << lastDate->toFormattedString(false);
+        TraceL << "last:" << lastDate->toFormattedString(false);
         req->session()->modify<trantor::Date>(VDate,
                                               [now](trantor::Date &vdate) {
                                                   vdate = now;
                                               });
-        LOG_TRACE << "update visitDate";
+        TraceL << "update visitDate";
         if (now > lastDate->after(10))
         {
             // 10 sec later can visit again;
@@ -42,7 +42,7 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
             return;
         }
     }
-    LOG_TRACE << "first visit,insert visitDate";
+    TraceL << "first visit,insert visitDate";
     req->session()->insert(VDate, now);
     ccb();
 }

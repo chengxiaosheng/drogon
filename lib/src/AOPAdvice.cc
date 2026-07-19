@@ -180,9 +180,9 @@ static void doAdviceChain(
             },
             [index, req, callbackPtr, &adviceChain]() mutable {
                 auto ioLoop = req->getLoop();
-                if (ioLoop && !ioLoop->isInLoopThread())
+                if (ioLoop && !ioLoop->isCurrentThread())
                 {
-                    ioLoop->queueInLoop([index,
+                    ioLoop->async([index,
                                          req,
                                          callbackPtr = std::move(callbackPtr),
                                          &adviceChain]() mutable {

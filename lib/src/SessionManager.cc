@@ -17,7 +17,7 @@
 using namespace drogon;
 
 SessionManager::SessionManager(
-    trantor::EventLoop *loop,
+    const std::shared_ptr<toolkit::EventPoller> &loop,
     size_t timeout,
     const std::vector<AdviceStartSessionCallback> &startAdvices,
     const std::vector<AdviceDestroySessionCallback> &destroyAdvices,
@@ -122,7 +122,7 @@ void SessionManager::changeSessionId(const SessionPtr &sessionPtr)
     // For requests sent before setting the new session ID to the client, we
     // reserve the old session slot for a period of time.
     sessionMapPtr_->runAfter(10, [this, oldId = std::move(oldId)]() {
-        LOG_TRACE << "remove the old slot of the session";
+        TraceL << "remove the old slot of the session";
         sessionMapPtr_->erase(oldId);
     });
 }

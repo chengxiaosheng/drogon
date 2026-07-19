@@ -57,7 +57,7 @@ void RedisTransactionImpl::execCommandAsync(
             [thisPtr = shared_from_this(),
              exceptionCallback =
                  std::move(exceptionCallback)](const RedisException &err) {
-                LOG_ERROR << err.what();
+                ErrorL << err.what();
                 thisPtr->isExecutedOrCancelled_ = true;
                 exceptionCallback(err);
             },
@@ -96,7 +96,7 @@ void RedisTransactionImpl::execCommandAsync(
                 {
                     return;
                 }
-                LOG_ERROR << err.what();
+                ErrorL << err.what();
                 thisPtr->isExecutedOrCancelled_ = true;
                 if (*expCbPtr)
                     (*expCbPtr)(err);
@@ -119,10 +119,10 @@ RedisTransactionImpl::~RedisTransactionImpl()
 {
     if (!isExecutedOrCancelled_)
     {
-        LOG_WARN << "The transaction is not executed before being destroyed";
+        WarnL << "The transaction is not executed before being destroyed";
         connPtr_->sendCommand([](const RedisResult & /*result*/) {},
                               [](const RedisException & /*err*/) {},
                               "DISCARD");
     }
-    LOG_TRACE << "transaction is destroyed";
+    TraceL << "transaction is destroyed";
 }

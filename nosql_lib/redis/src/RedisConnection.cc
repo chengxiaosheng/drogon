@@ -27,7 +27,7 @@ RedisConnection::RedisConnection(const trantor::InetAddress &serverAddress,
                                  const std::string &username,
                                  const std::string &password,
                                  unsigned int db,
-                                 trantor::EventLoop *loop)
+                                 const std::shared_ptr<toolkit::EventPoller> &loop)
     : serverAddr_(serverAddress),
       username_(username),
       password_(password),
@@ -35,12 +35,13 @@ RedisConnection::RedisConnection(const trantor::InetAddress &serverAddress,
       loop_(loop)
 {
     assert(loop_);
-    loop_->queueInLoop([this]() { startConnectionInLoop(); });
+    loop_->async([this]() { startConnectionInLoop(); }, false);
 }
 
 void RedisConnection::startConnectionInLoop()
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     assert(!redisContext_);
 
     redisContext_ =
@@ -48,7 +49,7 @@ void RedisConnection::startConnectionInLoop()
     status_ = ConnectStatus::kConnecting;
     if (redisContext_->err)
     {
-        LOG_ERROR << "Error: " << redisContext_->errstr;
+        ErrorL << "Error: " << redisContext_->errstr;
 
         if (disconnectCallback_)
         {
@@ -78,7 +79,7 @@ void RedisConnection::startConnectionInLoop()
             auto thisPtr = static_cast<RedisConnection *>(context->ev.data);
             if (status != REDIS_OK)
             {
-                LOG_ERROR << "Failed to connect to "
+                ErrorL << "Failed to connect to "
                           << thisPtr->serverAddr_.toIpPort() << "! "
                           << context->errstr;
                 thisPtr->handleDisconnect();
@@ -89,7 +90,7 @@ void RedisConnection::startConnectionInLoop()
             }
             else
             {
-                LOG_TRACE << "Connected successfully to "
+                TraceL << "Connected successfully to "
                           << thisPtr->serverAddr_.toIpPort();
                 if (thisPtr->password_.empty())
                 {
@@ -127,13 +128,13 @@ void RedisConnection::startConnectionInLoop()
                                 }
                                 else
                                 {
-                                    LOG_ERROR << r.asString();
+                                    ErrorL << r.asString();
                                     thisPtr->disconnect();
                                     thisPtr->status_ = ConnectStatus::kEnd;
                                 }
                             },
                             [weakThisPtr](const std::exception &err) {
-                                LOG_ERROR << err.what();
+                                ErrorL << err.what();
                                 auto thisPtr = weakThisPtr.lock();
                                 if (!thisPtr)
                                     return;
@@ -165,13 +166,13 @@ void RedisConnection::startConnectionInLoop()
                                 }
                                 else
                                 {
-                                    LOG_ERROR << r.asString();
+                                    ErrorL << r.asString();
                                     thisPtr->disconnect();
                                     thisPtr->status_ = ConnectStatus::kEnd;
                                 }
                             },
                             [weakThisPtr](const std::exception &err) {
-                                LOG_ERROR << err.what();
+                                ErrorL << err.what();
                                 auto thisPtr = weakThisPtr.lock();
                                 if (!thisPtr)
                                     return;
@@ -186,7 +187,7 @@ void RedisConnection::startConnectionInLoop()
 
                 if (thisPtr->db_ != 0)
                 {
-                    LOG_TRACE << "redis db:" << thisPtr->db_;
+                    TraceL << "redis db:" << thisPtr->db_;
                     std::weak_ptr<RedisConnection> weakThisPtr =
                         thisPtr->shared_from_this();
                     thisPtr->sendCommand(
@@ -205,13 +206,13 @@ void RedisConnection::startConnectionInLoop()
                             }
                             else
                             {
-                                LOG_ERROR << r.asString();
+                                ErrorL << r.asString();
                                 thisPtr->disconnect();
                                 thisPtr->status_ = ConnectStatus::kEnd;
                             }
                         },
                         [weakThisPtr](const std::exception &err) {
-                            LOG_ERROR << err.what();
+                            ErrorL << err.what();
                             auto thisPtr = weakThisPtr.lock();
                             if (!thisPtr)
                                 return;
@@ -233,15 +234,16 @@ void RedisConnection::startConnectionInLoop()
                 thisPtr->disconnectCallback_(thisPtr->shared_from_this());
             }
 
-            LOG_TRACE << "Disconnected from "
+            TraceL << "Disconnected from "
                       << thisPtr->serverAddr_.toIpPort();
         });
 }
 
 void RedisConnection::handleDisconnect()
 {
-    LOG_TRACE << "handleDisconnect";
-    loop_->assertInLoopThread();
+    TraceL << "handleDisconnect";
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     while ((!resultCallbacks_.empty()) && (!exceptionCallbacks_.empty()))
     {
         if (exceptionCallbacks_.front())
@@ -294,7 +296,7 @@ void RedisConnection::delRead(void *userData)
 
 void RedisConnection::cleanup(void * /*userData*/)
 {
-    LOG_TRACE << "cleanup";
+    TraceL << "cleanup";
 }
 
 void RedisConnection::handleRedisRead()
@@ -369,33 +371,33 @@ void RedisConnection::handleResult(redisReply *result)
 void RedisConnection::disconnect()
 {
     auto thisPtr = shared_from_this();
-    loop_->queueInLoop(
-        [thisPtr]() { redisAsyncDisconnect(thisPtr->redisContext_); });
+    loop_->async(
+        [thisPtr]() { redisAsyncDisconnect(thisPtr->redisContext_); }, false);
 }
 
 void RedisConnection::sendSubscribe(
     const std::shared_ptr<SubscribeContext> &subCtx)
 {
-    if (loop_->isInLoopThread())
+    if (loop_->isCurrentThread())
     {
         sendSubscribeInLoop(subCtx);
     }
     else
     {
-        loop_->queueInLoop([this, subCtx]() { sendSubscribeInLoop(subCtx); });
+        loop_->async([this, subCtx]() { sendSubscribeInLoop(subCtx); }, false);
     }
 }
 
 void RedisConnection::sendUnsubscribe(
     const std::shared_ptr<SubscribeContext> &subCtx)
 {
-    if (loop_->isInLoopThread())
+    if (loop_->isCurrentThread())
     {
         sendUnsubscribeInLoop(subCtx);
     }
     else
     {
-        loop_->queueInLoop([this, subCtx]() { sendUnsubscribeInLoop(subCtx); });
+        loop_->async([this, subCtx]() { sendUnsubscribeInLoop(subCtx); }, false);
     }
 }
 
@@ -463,7 +465,7 @@ void RedisConnection::handleSubscribeResult(redisReply *result,
                                 result->element[2 + isPattern]->len);
             if (!subCtx->alive())
             {
-                LOG_DEBUG << "Subscribe callback receive message, but "
+                DebugL << "Subscribe callback receive message, but "
                              "context is no "
                              "longer alive"
                           << ", channel: " << channel
@@ -494,7 +496,7 @@ void RedisConnection::handleSubscribeResult(redisReply *result,
         // Should not happen
         else
         {
-            LOG_ERROR << "Unknown redis response: " << result->element[0]->str;
+            ErrorL << "Unknown redis response: " << result->element[0]->str;
             // Shouldn't let message from another endpoint to abort this
             // program. So no assert(false) here.
         }
@@ -503,15 +505,15 @@ void RedisConnection::handleSubscribeResult(redisReply *result,
     {
         // When connection close, if a channel has been subscribed,
         // this callback will be called with empty result.
-        LOG_DEBUG << "Empty result (connection lost)";
+        DebugL << "Empty result (connection lost)";
     }
     else if (result->type == REDIS_REPLY_ERROR)
     {
-        LOG_ERROR << "Subscribe callback receive error result: " << result->str;
+        ErrorL << "Subscribe callback receive error result: " << result->str;
     }
     else
     {
-        LOG_ERROR << "Subscribe callback receive error result type: "
+        ErrorL << "Subscribe callback receive error result type: "
                   << result->type;
     }
 

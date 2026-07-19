@@ -14,7 +14,7 @@
 
 #include "HttpResponseParser.h"
 #include "HttpResponseImpl.h"
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <trantor/utils/MsgBuffer.h>
 #include <algorithm>
 #include <cerrno>
@@ -45,7 +45,7 @@ bool HttpResponseParser::processResponseLine(const char *begin, const char *end)
     const char *space = std::find(start, end, ' ');
     if (space != end)
     {
-        LOG_TRACE << *(space - 1);
+        TraceL << *(space - 1);
         if (*(space - 1) == '1')
         {
             responsePtr_->setVersion(Version::kHttp11);
@@ -66,7 +66,7 @@ bool HttpResponseParser::processResponseLine(const char *begin, const char *end)
     {
         std::string status_code(start, space - start);
         std::string status_message(space + 1, end - space - 1);
-        LOG_TRACE << status_code << " " << status_message;
+        TraceL << status_code << " " << status_message;
         auto code = atoi(status_code.c_str());
         responsePtr_->setStatusCode(HttpStatusCode(code));
 
@@ -128,7 +128,7 @@ bool HttpResponseParser::parseResponse(MsgBuffer *buf)
                 {
                     const std::string &len =
                         responsePtr_->getHeaderBy("content-length");
-                    // LOG_INFO << "content len=" << len;
+                    // InfoL << "content len=" << len;
                     if (!len.empty())
                     {
                         try
@@ -199,8 +199,8 @@ bool HttpResponseParser::parseResponse(MsgBuffer *buf)
         }
         else if (status_ == HttpResponseParseStatus::kExpectBody)
         {
-            // LOG_INFO << "expectBody:len=" << request_->contentLen;
-            // LOG_INFO << "expectBody:buf=" << buf;
+            // InfoL << "expectBody:len=" << request_->contentLen;
+            // InfoL << "expectBody:buf=" << buf;
             if (buf->readableBytes() == 0)
             {
                 if (leftBodyLength_ == 0)
@@ -231,9 +231,9 @@ bool HttpResponseParser::parseResponse(MsgBuffer *buf)
             if (leftBodyLength_ == 0)
             {
                 status_ = HttpResponseParseStatus::kGotAll;
-                LOG_TRACE << "post got all:len=" << leftBodyLength_;
-                // LOG_INFO<<"content:"<<request_->content_;
-                LOG_TRACE << "content(END)";
+                TraceL << "post got all:len=" << leftBodyLength_;
+                // InfoL<<"content:"<<request_->content_;
+                TraceL << "content(END)";
                 hasMore = false;
             }
         }
@@ -281,7 +281,7 @@ bool HttpResponseParser::parseResponse(MsgBuffer *buf)
         }
         else if (status_ == HttpResponseParseStatus::kExpectChunkBody)
         {
-            // LOG_TRACE<<"expect chunk
+            // TraceL<<"expect chunk
             // len="<<currentChunkLength_;
             if (buf->readableBytes() >= (currentChunkLength_ + 2))
             {

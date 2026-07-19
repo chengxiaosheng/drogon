@@ -16,7 +16,7 @@
 #include <drogon/orm/CoroMapper.h>
 #endif
 #include <trantor/utils/Date.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <json/json.h>
 #include <string>
 #include <string_view>
@@ -275,7 +275,7 @@ class Blog
         {
             sql.append(1, ')');
         }
-        LOG_TRACE << sql;
+        TraceL << sql;
         return sql;
     }
 };

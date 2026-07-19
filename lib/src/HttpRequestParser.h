@@ -17,7 +17,7 @@
 #include <drogon/HttpTypes.h>
 #include <trantor/net/TcpConnection.h>
 #include <trantor/utils/MsgBuffer.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -25,7 +25,7 @@
 
 namespace drogon
 {
-class HttpRequestParser : public trantor::NonCopyable,
+class HttpRequestParser : public toolkit::noncopyable,
                           public std::enable_shared_from_this<HttpRequestParser>
 {
   public:
@@ -114,7 +114,7 @@ class HttpRequestParser : public trantor::NonCopyable,
 
     std::vector<std::pair<HttpResponsePtr, bool>> &getResponseBuffer()
     {
-        assert(loop_->isInLoopThread());
+        assert(loop_->isCurrentThread());
         if (!responseBuffer_)
         {
             responseBuffer_ =
@@ -126,7 +126,7 @@ class HttpRequestParser : public trantor::NonCopyable,
 
     std::vector<HttpRequestImplPtr> &getRequestBuffer()
     {
-        assert(loop_->isInLoopThread());
+        assert(loop_->isCurrentThread());
         if (!requestBuffer_)
         {
             requestBuffer_ = std::unique_ptr<std::vector<HttpRequestImplPtr>>(
@@ -139,7 +139,7 @@ class HttpRequestParser : public trantor::NonCopyable,
     HttpRequestImplPtr makeRequestForPool(HttpRequestImpl *p);
     bool processRequestLine(const char *begin, const char *end);
     HttpRequestParseStatus status_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     HttpRequestImplPtr request_;
     bool firstRequest_{true};
     WebSocketConnectionImplPtr websockConnPtr_;

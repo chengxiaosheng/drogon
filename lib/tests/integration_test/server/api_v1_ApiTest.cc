@@ -41,7 +41,7 @@ void ApiTest::your_method_name(
     double p1,
     int p2) const
 {
-    LOG_WARN << req->matchedPathPatternData();
+    WarnL << req->matchedPathPatternData();
     HttpViewData data;
     data.insert("title", std::string("ApiTest::get"));
     SafeStringMap<std::string> para;
@@ -486,7 +486,7 @@ void ApiTest::cacheTest2(
     static size_t callCount = 0;
 
     auto resp = HttpResponse::newHttpResponse();
-    LOG_ERROR << callCount;
+    ErrorL << callCount;
     resp->setBody(std::to_string(callCount));
     resp->setContentTypeCode(CT_TEXT_PLAIN);
     // Expire after a millennia
@@ -506,7 +506,7 @@ void ApiTest::cacheTestRegex(
     static size_t callCount = 0;
 
     auto resp = HttpResponse::newHttpResponse();
-    LOG_ERROR << callCount;
+    ErrorL << callCount;
     resp->setBody(std::to_string(callCount));
     resp->setContentTypeCode(CT_TEXT_PLAIN);
     // Expire after a millennia

@@ -14,7 +14,7 @@
 
 #include <drogon/Cookie.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 using namespace drogon;
 
 std::string Cookie::cookieString() const

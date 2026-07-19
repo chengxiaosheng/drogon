@@ -19,7 +19,7 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #if !defined(_WIN32)
 #include <unistd.h>
 #define os_access access
@@ -169,22 +169,23 @@ static void loadLogSetting(const Json::Value &log)
     auto logLevel = log.get("log_level", "DEBUG").asString();
     if (logLevel == "TRACE")
     {
-        trantor::Logger::setLogLevel(trantor::Logger::kTrace);
+        toolkit::Logger::Instance().setLevel(toolkit::LTrace);
     }
     else if (logLevel == "DEBUG")
     {
-        trantor::Logger::setLogLevel(trantor::Logger::kDebug);
+        toolkit::Logger::Instance().setLevel(toolkit::LDebug);
     }
     else if (logLevel == "INFO")
     {
-        trantor::Logger::setLogLevel(trantor::Logger::kInfo);
+        toolkit::Logger::Instance().setLevel(toolkit::LInfo);
     }
     else if (logLevel == "WARN")
     {
-        trantor::Logger::setLogLevel(trantor::Logger::kWarn);
+        toolkit::Logger::Instance().setLevel(toolkit::LWarn);
     }
     auto localTime = log.get("display_local_time", false).asBool();
-    trantor::Logger::setDisplayLocalTime(localTime);
+
+    //trantor::Logger::setDisplayLocalTime(localTime);
 }
 
 static void loadControllers(const Json::Value &controllers)
@@ -258,7 +259,7 @@ static void loadApp(const Json::Value &app)
     {
         // set the number to the number of processors.
         threadsNum = std::thread::hardware_concurrency();
-        LOG_TRACE << "The number of processors is " << threadsNum;
+        TraceL << "The number of processors is " << threadsNum;
     }
     if (threadsNum < 1)
         threadsNum = 1;
@@ -314,7 +315,7 @@ static void loadApp(const Json::Value &app)
         for (auto const &fileType : fileTypes)
         {
             types.push_back(fileType.asString());
-            LOG_TRACE << "file type:" << types.back();
+            TraceL << "file type:" << types.back();
         }
         drogon::app().setFileTypes(types);
     }
@@ -396,7 +397,7 @@ static void loadApp(const Json::Value &app)
             for (auto const &viewsPath : viewsPaths)
             {
                 paths.push_back(viewsPath.asString());
-                LOG_TRACE << "views path:" << paths.back();
+                TraceL << "views path:" << paths.back();
             }
             auto outputPath =
                 app.get("dynamic_views_output_path", "").asString();
@@ -644,7 +645,7 @@ static void loadListeners(const Json::Value &listeners)
 {
     if (!listeners)
         return;
-    LOG_TRACE << "Has " << listeners.size() << " listeners";
+    TraceL << "Has " << listeners.size() << " listeners";
     for (auto const &listener : listeners)
     {
         auto addr = listener.get("address", "0.0.0.0").asString();
@@ -660,7 +661,7 @@ static void loadListeners(const Json::Value &listeners)
             {
                 if (opt.size() == 0 || opt.size() > 2)
                 {
-                    LOG_FATAL << "SSL configuration option should be an 1 or "
+                    ErrorL << "SSL configuration option should be an 1 or "
                                  "2-element array";
                     abort();
                 }
@@ -668,7 +669,7 @@ static void loadListeners(const Json::Value &listeners)
                                          opt.get(1, "").asString());
             }
         }
-        LOG_TRACE << "Add listener:" << addr << ":" << port;
+        TraceL << "Add listener:" << addr << ":" << port;
         drogon::app().addListener(
             addr, port, useSSL, cert, key, useOldTLS, sslConfCmds);
     }
@@ -688,7 +689,7 @@ static void loadSSL(const Json::Value &sslConf)
         {
             if (opt.size() == 0 || opt.size() > 2)
             {
-                LOG_FATAL << "SSL configuration option should be an 1 or "
+                ErrorL << "SSL configuration option should be an 1 or "
                              "2-element array";
                 abort();
             }

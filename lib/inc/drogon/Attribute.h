@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <map>
 #include <memory>
 #include <any>
@@ -49,7 +49,7 @@ class Attributes
             }
             else
             {
-                LOG_ERROR << "Bad type";
+                ErrorL << "Bad type";
             }
         }
         return nullVal;

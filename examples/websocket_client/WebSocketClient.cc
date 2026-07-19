@@ -48,14 +48,14 @@ int main(int argc, char *argv[])
         else if (type == WebSocketMessageType::Close)
             messageType = "Close";
 
-        LOG_INFO << "new message (" << messageType << "): " << message;
+        InfoL << "new message (" << messageType << "): " << message;
     });
 
     wsPtr->setConnectionClosedHandler([](const WebSocketClientPtr &) {
-        LOG_INFO << "WebSocket connection closed!";
+        InfoL << "WebSocket connection closed!";
     });
 
-    LOG_INFO << "Connecting to WebSocket at " << server;
+    InfoL << "Connecting to WebSocket at " << server;
     wsPtr->connectToServer(
         req,
         [](ReqResult r,
@@ -63,20 +63,20 @@ int main(int argc, char *argv[])
            const WebSocketClientPtr &wsPtr) {
             if (r != ReqResult::Ok)
             {
-                LOG_ERROR << "Failed to establish WebSocket connection!";
+                ErrorL << "Failed to establish WebSocket connection!";
                 wsPtr->stop();
                 return;
             }
-            LOG_INFO << "WebSocket connected!";
+            InfoL << "WebSocket connected!";
             wsPtr->getConnection()->setPingMessage("", 2s);
             wsPtr->getConnection()->send("hello!");
         });
 
     // Quit the application after 15 seconds
-    app().getLoop()->runAfter(15, []() { app().quit(); });
+    app().getLoop()->doDelayTask(15 * 1000, []() { app().quit(); return 0; });
 
-    app().setLogLevel(trantor::Logger::kDebug);
+    app().setLogLevel(toolkit::LDebug);
     app().run();
-    LOG_INFO << "bye!";
+    InfoL << "bye!";
     return 0;
 }

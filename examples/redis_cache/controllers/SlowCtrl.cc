@@ -31,7 +31,7 @@ drogon::AsyncTask SlowCtrl::observe(
     }
     catch (const std::exception &err)
     {
-        LOG_ERROR << err.what();
+        ErrorL << err.what();
         callback(drogon::HttpResponse::newNotFoundResponse());
     }
 }

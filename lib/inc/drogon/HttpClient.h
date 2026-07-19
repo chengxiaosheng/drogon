@@ -19,8 +19,8 @@
 #include <drogon/drogon_callbacks.h>
 #include <drogon/HttpResponse.h>
 #include <drogon/HttpRequest.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoop.h>
+#include <Util/util.h>
+#include <Poller/EventPoller.h>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -69,7 +69,7 @@ struct HttpRespAwaiter : public CallbackAwaiter<HttpResponsePtr>
  * response callbacks are invoked without fear of accidental deconstruction.
  *
  */
-class DROGON_EXPORT HttpClient : public trantor::NonCopyable
+class DROGON_EXPORT HttpClient : public toolkit::noncopyable
 {
   public:
     /**
@@ -130,7 +130,7 @@ class DROGON_EXPORT HttpClient : public trantor::NonCopyable
     std::pair<ReqResult, HttpResponsePtr> sendRequest(const HttpRequestPtr &req,
                                                       double timeout = 0)
     {
-        assert(!getLoop()->isInLoopThread() &&
+        assert(!getLoop()->isCurrentThread() &&
                "Deadlock detected! Calling a sync API from the same loop as "
                "the HTTP client processes on will deadlock the event loop");
         std::promise<std::pair<ReqResult, HttpResponsePtr>> prom;
@@ -257,12 +257,12 @@ class DROGON_EXPORT HttpClient : public trantor::NonCopyable
     static HttpClientPtr newHttpClient(const std::string &ip,
                                        uint16_t port,
                                        bool useSSL = false,
-                                       trantor::EventLoop *loop = nullptr,
+                                       const std::shared_ptr<toolkit::EventPoller> &loop = nullptr,
                                        bool useOldTLS = false,
                                        bool validateCert = true);
 
     /// Get the event loop of the client;
-    virtual trantor::EventLoop *getLoop() = 0;
+    virtual std::shared_ptr<toolkit::EventPoller> getLoop() = 0;
 
     /// Get the number of bytes sent or received
     virtual size_t bytesSent() const = 0;
@@ -348,7 +348,7 @@ class DROGON_EXPORT HttpClient : public trantor::NonCopyable
      *
      */
     static HttpClientPtr newHttpClient(const std::string &hostString,
-                                       trantor::EventLoop *loop = nullptr,
+                                       const std::shared_ptr<toolkit::EventPoller> &loop = nullptr,
                                        bool useOldTLS = false,
                                        bool validateCert = true);
 

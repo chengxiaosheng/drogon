@@ -17,6 +17,7 @@
 #include "RedisSubscriberImpl.h"
 #include "RedisTransactionImpl.h"
 #include "../../lib/src/TaskTimeoutFlag.h"
+#include "Thread/WorkThreadPool.h"
 
 using namespace drogon::nosql;
 
@@ -37,11 +38,11 @@ RedisClientImpl::RedisClientImpl(const trantor::InetAddress &serverAddress,
                                  size_t numberOfConnections,
                                  std::string username,
                                  std::string password,
-                                 unsigned int db)
-    : loops_(numberOfConnections < std::thread::hardware_concurrency()
-                 ? numberOfConnections
-                 : std::thread::hardware_concurrency(),
-             "RedisLoop"),
+                                 unsigned int db) :
+    // : loops_(numberOfConnections < std::thread::hardware_concurrency()
+    //              ? numberOfConnections
+    //              : std::thread::hardware_concurrency(),
+    //          "RedisLoop"),
       serverAddr_(serverAddress),
       username_(std::move(username)),
       password_(std::move(password)),
@@ -52,18 +53,19 @@ RedisClientImpl::RedisClientImpl(const trantor::InetAddress &serverAddress,
 
 void RedisClientImpl::init()
 {
-    loops_.start();
+    // loops_.start();
     for (size_t i = 0; i < numberOfConnections_; ++i)
     {
-        auto loop = loops_.getNextLoop();
-        loop->queueInLoop([this, loop]() {
+        // auto loop = loops_.getNextLoop();
+        auto loop = toolkit::WorkThreadPool::Instance()[i];
+        loop->async([this, loop]() {
             std::lock_guard<std::mutex> lock(connectionsMutex_);
             connections_.insert(newConnection(loop));
-        });
+        }, false);
     }
 }
 
-RedisConnectionPtr RedisClientImpl::newConnection(trantor::EventLoop *loop)
+RedisConnectionPtr RedisClientImpl::newConnection(const std::shared_ptr<toolkit::EventPoller> &loop)
 {
     auto conn = std::make_shared<RedisConnection>(
         serverAddr_, username_, password_, db_, loop);
@@ -79,7 +81,7 @@ RedisConnectionPtr RedisClientImpl::newConnection(trantor::EventLoop *loop)
             thisPtr->handleNextTask(conn);
         }
     });
-    conn->setDisconnectCallback([thisWeakPtr](RedisConnectionPtr &&conn) {
+    conn->setDisconnectCallback([thisWeakPtr, loop](RedisConnectionPtr &&conn) {
         // assert(status == REDIS_CONNECTED);
         auto thisPtr = thisWeakPtr.lock();
         if (thisPtr)
@@ -96,11 +98,11 @@ RedisConnectionPtr RedisClientImpl::newConnection(trantor::EventLoop *loop)
                     break;
                 }
             }
-            auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
             assert(loop);
-            loop->runAfter(2.0, [thisPtr, loop, conn]() {
+            loop->doDelayTask(2.0 * 1000, [thisPtr, loop, conn]() {
                 std::lock_guard<std::mutex> lock(thisPtr->connectionsMutex_);
                 thisPtr->connections_.insert(thisPtr->newConnection(loop));
+                return 0;
             });
         }
     });
@@ -115,7 +117,7 @@ RedisConnectionPtr RedisClientImpl::newConnection(trantor::EventLoop *loop)
 }
 
 RedisConnectionPtr RedisClientImpl::newSubscribeConnection(
-    trantor::EventLoop *loop,
+    const std::shared_ptr<toolkit::EventPoller> &loop,
     const std::shared_ptr<RedisSubscriberImpl> &subscriber)
 {
     auto conn = std::make_shared<RedisConnection>(
@@ -139,7 +141,7 @@ RedisConnectionPtr RedisClientImpl::newSubscribeConnection(
             thisPtr->connections_.erase(conn);
         }
     });
-    conn->setDisconnectCallback([weakThis, weakSub](RedisConnectionPtr &&conn) {
+    conn->setDisconnectCallback([weakThis, weakSub, loop](RedisConnectionPtr &&conn) {
         // assert(status == REDIS_CONNECTED);
         auto thisPtr = weakThis.lock();
         if (!thisPtr)
@@ -151,12 +153,13 @@ RedisConnectionPtr RedisClientImpl::newSubscribeConnection(
             return;
         subPtr->clearConnection();
 
-        auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
+        // auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
         assert(loop);
-        loop->runAfter(2.0, [thisPtr, loop, subPtr]() {
+        loop->doDelayTask(2.0 * 1000, [thisPtr, loop, subPtr]() {
             std::lock_guard<std::mutex> lock(thisPtr->connectionsMutex_);
             thisPtr->connections_.insert(
                 thisPtr->newSubscribeConnection(loop, subPtr));
+            return 0;
         });
     });
     conn->setIdleCallback([weakThis, weakSub](const RedisConnectionPtr &) {
@@ -216,7 +219,7 @@ void RedisClientImpl::execCommandAsync(
     }
     else
     {
-        LOG_TRACE << "no connection available, push command to buffer";
+        TraceL << "no connection available, push command to buffer";
         va_list args;
         va_start(args, command);
         auto formattedCmd = RedisConnection::getFormattedCommand(command, args);
@@ -294,7 +297,8 @@ void RedisClientImpl::newTransactionAsync(
             auto transCbPtr = std::make_shared<std::weak_ptr<
                 std::function<void(const RedisConnectionPtr &)>>>();
             auto timeoutFlagPtr = std::make_shared<TaskTimeoutFlag>(
-                loops_.getNextLoop(),
+                toolkit::WorkThreadPool::Instance().getPoller(),
+                // loops_.getNextLoop(),
                 std::chrono::duration<double>(timeout_),
                 [callbackPtr, transCbPtr, this]() {
                     auto cbPtr = (*transCbPtr).lock();
@@ -389,7 +393,8 @@ void RedisClientImpl::execCommandAsyncWithTimeout(
     auto bufferCbPtr = std::make_shared<
         std::weak_ptr<std::function<void(const RedisConnectionPtr &)>>>();
     auto timeoutFlagPtr = std::make_shared<TaskTimeoutFlag>(
-        loops_.getNextLoop(),
+        toolkit::WorkThreadPool::Instance().getPoller(),
+        // loops_.getNextLoop(),
         std::chrono::duration<double>(timeout_),
         [expCbPtr, bufferCbPtr, this]() {
             auto bfCbPtr = (*bufferCbPtr).lock();
@@ -458,7 +463,7 @@ void RedisClientImpl::execCommandAsyncWithTimeout(
     }
     else
     {
-        LOG_TRACE << "no connection available, push command to buffer";
+        TraceL << "no connection available, push command to buffer";
         auto formattedCmd = RedisConnection::getFormattedCommand(command, ap);
         auto bfCbPtr =
             std::make_shared<std::function<void(const RedisConnectionPtr &)>>(
@@ -480,11 +485,11 @@ void RedisClientImpl::execCommandAsyncWithTimeout(
 std::shared_ptr<RedisSubscriber> RedisClientImpl::newSubscriber() noexcept
 {
     auto subscriber = std::make_shared<RedisSubscriberImpl>();
-    auto loop = loops_.getNextLoop();
-    loop->queueInLoop([this, loop, subscriber]() {
+    auto loop = toolkit::WorkThreadPool::Instance().getPoller();
+    loop->async([this, loop, subscriber]() {
         std::lock_guard<std::mutex> lock(connectionsMutex_);
         connections_.insert(newSubscribeConnection(loop, subscriber));
-    });
+    }, false);
 
     return subscriber;
 }

@@ -126,7 +126,7 @@ class CoroMapper : public Mapper<T>
         }
         else
         {
-            LOG_FATAL << "The table must have a primary key";
+            ErrorL << "The table must have a primary key";
             abort();
         }
     }

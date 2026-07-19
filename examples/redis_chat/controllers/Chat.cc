@@ -45,10 +45,10 @@ void Chat::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
     if (type != WebSocketMessageType::Text &&
         type != WebSocketMessageType::Pong)
     {
-        LOG_ERROR << "Unsupported message type " << (int)type;
+        ErrorL << "Unsupported message type " << (int)type;
         return;
     }
-    LOG_DEBUG << "WsClient new message from "
+    DebugL << "WsClient new message from "
               << wsConnPtr->peerAddr().toIpPort();
 
     auto context = wsConnPtr->getContext<ClientContext>();
@@ -67,7 +67,7 @@ void Chat::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
                 // Do nothing
             },
             [wsConnPtr](const nosql::RedisException &ex) {
-                LOG_ERROR << "Update user status failed: " << ex.what();
+                ErrorL << "Update user status failed: " << ex.what();
                 wsConnPtr->send("ERROR: Service unavailable.");
                 wsConnPtr->forceClose();
             },
@@ -163,7 +163,7 @@ void Chat::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
 void Chat::handleNewConnection(const HttpRequestPtr &req,
                                const WebSocketConnectionPtr &wsConnPtr)
 {
-    LOG_DEBUG << "WsClient new connection from "
+    DebugL << "WsClient new connection from "
               << wsConnPtr->peerAddr().toIpPort();
     const std::string name = req->getParameter("name");
     if (name.empty())
@@ -203,7 +203,7 @@ void Chat::handleNewConnection(const HttpRequestPtr &req,
 
 void Chat::handleConnectionClosed(const WebSocketConnectionPtr &wsConnPtr)
 {
-    LOG_DEBUG << "WsClient close connection from "
+    DebugL << "WsClient close connection from "
               << wsConnPtr->peerAddr().toIpPort();
     auto context = wsConnPtr->getContext<ClientContext>();
     // Channels will be auto unsubscribed when subscriber destructed.
@@ -233,7 +233,7 @@ return 1;
             callback((int)result.asInteger());
         },
         [callback](const nosql::RedisException &ex) {
-            LOG_ERROR << "Login error: " << ex.what();
+            ErrorL << "Login error: " << ex.what();
             callback(-1);
         },
         "EVAL %s 1 %s %u",
@@ -250,7 +250,7 @@ static void redisLogout(std::function<void(int)> &&callback,
             callback((int)result.asInteger());
         },
         [callback](const nosql::RedisException &ex) {
-            LOG_ERROR << "Logout error: " << ex.what();
+            ErrorL << "Logout error: " << ex.what();
             callback(-1);
         },
         "DEL %s",

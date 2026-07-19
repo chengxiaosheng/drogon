@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include <trantor/net/EventLoopThreadPool.h>
 #include <trantor/net/callbacks.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,7 +29,7 @@ class InetAddress;
 
 namespace drogon
 {
-class ListenerManager : public trantor::NonCopyable
+class ListenerManager : public toolkit::noncopyable
 {
   public:
     ~ListenerManager() = default;
@@ -46,8 +45,8 @@ class ListenerManager : public trantor::NonCopyable
     void createListeners(
         const std::string &globalCertFile,
         const std::string &globalKeyFile,
-        const std::vector<std::pair<std::string, std::string>> &sslConfCmds,
-        const std::vector<trantor::EventLoop *> &ioLoops);
+        const std::vector<std::pair<std::string, std::string>> &sslConfCmds/*,
+        const std::vector<trantor::EventLoop *> &ioLoops*/);
     void startListening();
     void stopListening();
 
@@ -104,7 +103,6 @@ class ListenerManager : public trantor::NonCopyable
 
     // should have value when and only when on OS that one port can only be
     // listened by one thread
-    std::unique_ptr<trantor::EventLoopThread> listeningThread_;
     std::function<void(int)> beforeListenSetSockOptCallback_;
     std::function<void(int)> afterAcceptSetSockOptCallback_;
     std::function<void(const trantor::TcpConnectionPtr &)> connectionCallback_;

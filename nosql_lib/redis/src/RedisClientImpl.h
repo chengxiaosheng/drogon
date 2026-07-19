@@ -17,8 +17,7 @@
 #include "RedisSubscriberImpl.h"
 #include "SubscribeContext.h"
 #include <drogon/nosql/RedisClient.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoopThreadPool.h>
+#include <Util/util.h>
 #include <vector>
 #include <unordered_set>
 #include <list>
@@ -33,7 +32,7 @@ using RedisConnectionPtr = std::shared_ptr<RedisConnection>;
 
 class RedisClientImpl final
     : public RedisClient,
-      public trantor::NonCopyable,
+      public toolkit::noncopyable,
       public std::enable_shared_from_this<RedisClientImpl>
 {
   public:
@@ -79,7 +78,6 @@ class RedisClientImpl final
     void closeAll() override;
 
   private:
-    trantor::EventLoopThreadPool loops_;
     std::mutex connectionsMutex_;
     std::unordered_set<RedisConnectionPtr> connections_;
     std::vector<RedisConnectionPtr> readyConnections_;
@@ -93,9 +91,9 @@ class RedisClientImpl final
     std::list<std::shared_ptr<std::function<void(const RedisConnectionPtr &)>>>
         tasks_;
 
-    RedisConnectionPtr newConnection(trantor::EventLoop *loop);
+    RedisConnectionPtr newConnection(const std::shared_ptr<toolkit::EventPoller> &loop);
     RedisConnectionPtr newSubscribeConnection(
-        trantor::EventLoop *loop,
+        const std::shared_ptr<toolkit::EventPoller> &loop,
         const std::shared_ptr<RedisSubscriberImpl> &subscriber);
 
     std::shared_ptr<RedisTransaction> makeTransaction(

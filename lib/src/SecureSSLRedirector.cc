@@ -49,7 +49,7 @@ void SecureSSLRedirector::initAndStart(const Json::Value &config)
         }
         else
         {
-            LOG_ERROR
+            ErrorL
                 << "ssl_redirect_exempt must be a string or string array!";
         }
     }
@@ -58,7 +58,7 @@ void SecureSSLRedirector::initAndStart(const Json::Value &config)
     auto redirector = drogon::app().getPlugin<Redirector>();
     if (!redirector)
     {
-        LOG_ERROR << "Redirector plugin is not found!";
+        ErrorL << "Redirector plugin is not found!";
         return;
     }
     redirector->registerRedirectHandler(

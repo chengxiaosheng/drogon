@@ -40,9 +40,9 @@ static void doFilterChains(
             },
             [index, req, callbackPtr, &filters]() mutable {
                 auto ioLoop = req->getLoop();
-                if (ioLoop && !ioLoop->isInLoopThread())
+                if (ioLoop && !ioLoop->isCurrentThread())
                 {
-                    ioLoop->queueInLoop(
+                    ioLoop->async(
                         [&filters,
                          index,
                          req,
@@ -113,9 +113,9 @@ static void passMiddlewareChains(
                                &&userPostCb) mutable {
                 // call next middleware
                 auto ioLoop = req->getLoop();
-                if (ioLoop && !ioLoop->isInLoopThread())
+                if (ioLoop && !ioLoop->isCurrentThread())
                 {
-                    ioLoop->queueInLoop(
+                    ioLoop->async(
                         [&middlewares,
                          index,
                          req,
@@ -161,7 +161,7 @@ std::vector<std::shared_ptr<HttpMiddlewareBase>> createMiddlewares(
         }
         else
         {
-            LOG_ERROR << "middleware " << name << " not found";
+            ErrorL << "middleware " << name << " not found";
         }
     }
     return middlewares;

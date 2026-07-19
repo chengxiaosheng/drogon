@@ -205,7 +205,7 @@ void SlashRemover::initAndStart(const Json::Value &config)
     auto redirector = app().getPlugin<Redirector>();
     if (!redirector)
     {
-        LOG_ERROR << "Redirector plugin is not found!";
+        ErrorL << "Redirector plugin is not found!";
         return;
     }
     auto func = [removeMode](const HttpRequestPtr &req) -> bool {
@@ -223,5 +223,5 @@ void SlashRemover::initAndStart(const Json::Value &config)
 
 void SlashRemover::shutdown()
 {
-    LOG_TRACE << "SlashRemover plugin is shutdown!";
+    TraceL << "SlashRemover plugin is shutdown!";
 }

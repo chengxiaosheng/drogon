@@ -1,7 +1,6 @@
 #include <drogon/HttpAppFramework.h>
 #include <drogon/HttpResponse.h>
 #include <drogon/drogon.h>
-#include "trantor/utils/Logger.h"
 
 using namespace drogon;
 
@@ -124,7 +123,7 @@ int main()
             resp->setBody("Hello from Drogon!");
 
             // Log client IP address
-            LOG_INFO << "Request to /hello from " << req->getPeerAddr().toIp();
+            InfoL << "Request to /hello from " << req->getPeerAddr().toIp();
 
             callback(resp);
         },
@@ -139,8 +138,8 @@ int main()
             resp->setBody(std::string("Echo: ").append(req->getBody()));
 
             // Log client IP and request body
-            LOG_INFO << "Request to /echo from " << req->getPeerAddr().toIp();
-            LOG_INFO << "Echo content: " << req->getBody();
+            InfoL << "Request to /echo from " << req->getPeerAddr().toIp();
+            InfoL << "Echo content: " << req->getBody();
 
             callback(resp);
         },

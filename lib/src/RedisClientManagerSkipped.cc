@@ -22,7 +22,7 @@ using namespace drogon::nosql;
 using namespace drogon;
 
 void RedisClientManager::createRedisClients(
-    const std::vector<trantor::EventLoop *> & /*ioloops*/)
+    /*const std::vector<trantor::EventLoop *> & /*ioloops*/)
 {
     return;
 }
@@ -37,14 +37,14 @@ void RedisClientManager::createRedisClient(const std::string & /*name*/,
                                            double /*timeout*/,
                                            unsigned int /*db*/)
 {
-    LOG_FATAL << "Redis is not supported by drogon, please install the "
+    ErrorL << "Redis is not supported by drogon, please install the "
                  "hiredis library first.";
     abort();
 }
 
 // bool RedisClientManager::areAllRedisClientsAvailable() const noexcept
 // {
-//     LOG_FATAL << "Redis is supported by drogon, please install the "
+//     ErrorL << "Redis is supported by drogon, please install the "
 //                  "hiredis library first.";
 //     abort();
 // }

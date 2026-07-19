@@ -59,7 +59,7 @@ DROGON_TEST(CookieSameSite)
                 auto json = resp->getJsonObject();
                 auto cookie = resp->getCookie("JSESSIONID");
 
-                LOG_INFO << "Client: cookie-value == " << cookie.value()
+                InfoL << "Client: cookie-value == " << cookie.value()
                          << ", requested value == " << (*seq.i)
                          << ", new  value == "
                          << (*json)["new value"].asString()

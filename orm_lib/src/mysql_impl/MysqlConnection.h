@@ -16,9 +16,9 @@
 
 #include "../DbConnection.h"
 #include <drogon/orm/DbClient.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/Channel.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -36,7 +36,7 @@ class MysqlConnection : public DbConnection,
                         public std::enable_shared_from_this<MysqlConnection>
 {
   public:
-    MysqlConnection(trantor::EventLoop *loop, const std::string &connInfo);
+    MysqlConnection(const std::shared_ptr<toolkit::EventPoller> &loop, const std::string &connInfo);
 
     void init() override;
 
@@ -53,7 +53,7 @@ class MysqlConnection : public DbConnection,
                  std::function<void(const std::exception_ptr &)>
                      &&exceptCallback) override
     {
-        if (loop_->isInLoopThread())
+        if (loop_->isCurrentThread())
         {
             execSqlInLoop(std::move(sql),
                           paraNum,
@@ -66,7 +66,7 @@ class MysqlConnection : public DbConnection,
         else
         {
             auto thisPtr = shared_from_this();
-            loop_->queueInLoop(
+            loop_->async(
                 [thisPtr,
                  sql = std::move(sql),
                  paraNum,
@@ -88,7 +88,7 @@ class MysqlConnection : public DbConnection,
 
     void batchSql(std::deque<std::shared_ptr<SqlCmd>> &&) override
     {
-        LOG_FATAL << "The mysql library does not support batch mode";
+        ErrorL << "The mysql library does not support batch mode";
         exit(1);
     }
 

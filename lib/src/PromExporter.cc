@@ -12,7 +12,7 @@ using namespace drogon::plugin;
 void PromExporter::initAndStart(const Json::Value &config)
 {
     path_ = config.get("path", path_).asString();
-    LOG_TRACE << path_;
+    TraceL << path_;
     auto &app = drogon::app();
     std::weak_ptr<PromExporter> weakPtr = shared_from_this();
     app.registerHandler(
@@ -59,7 +59,7 @@ void PromExporter::initAndStart(const Json::Value &config)
                             }
                             else
                             {
-                                LOG_ERROR << "label name must be a string!";
+                                ErrorL << "label name must be a string!";
                             }
                         }
                         if (type == "counter")
@@ -89,23 +89,23 @@ void PromExporter::initAndStart(const Json::Value &config)
                         }
                         else
                         {
-                            LOG_ERROR << "Unknown collector type: " << type;
+                            ErrorL << "Unknown collector type: " << type;
                         }
                     }
                     else
                     {
-                        LOG_ERROR << "labels must be an array!";
+                        ErrorL << "labels must be an array!";
                     }
                 }
                 else
                 {
-                    LOG_ERROR << "collector must be an object!";
+                    ErrorL << "collector must be an object!";
                 }
             }
         }
         else
         {
-            LOG_ERROR << "collectors must be an array!";
+            ErrorL << "collectors must be an array!";
         }
     }
 }

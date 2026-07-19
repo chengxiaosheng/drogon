@@ -24,7 +24,7 @@
 using namespace drogon;
 
 void HttpControllersRouter::init(
-    const std::vector<trantor::EventLoop *> & /*ioLoops*/)
+    /*const std::vector<trantor::EventLoop *> & /*ioLoops*/)
 {
     auto initMiddlewaresAndCorsMethods = [](const auto &item) {
         auto corsMethods = std::make_shared<std::string>("OPTIONS,");
@@ -213,7 +213,7 @@ static SimpleControllerProcessResult processSimpleControllerParams(
         }
         else
         {
-            LOG_ERROR << "Invalid controller constraint type";
+            ErrorL << "Invalid controller constraint type";
             // Used to call exit() here, but that's not very nice.
         }
     }
@@ -240,20 +240,20 @@ void HttpControllersRouter::registerHttpSimpleController(
     auto binder = std::make_shared<HttpSimpleControllerBinder>();
     binder->handlerName_ = ctrlName;
     binder->middlewareNames_ = result.middlewares;
-    drogon::app().getLoop()->queueInLoop([this, binder, ctrlName, path]() {
+    drogon::app().getLoop()->async([this, binder, ctrlName, path]() {
         auto &object_ = DrClassMap::getSingleInstance(ctrlName);
         auto controller =
             std::dynamic_pointer_cast<HttpSimpleControllerBase>(object_);
         if (!controller)
         {
-            LOG_ERROR << "Controller class not found: " << ctrlName;
+            ErrorL << "Controller class not found: " << ctrlName;
             simpleCtrlMap_.erase(path);
             return;
         }
         binder->controller_ = controller;
         // Recreate this with the correct number of threads.
         binder->responseCache_ = IOThreadStorage<HttpResponsePtr>();
-    });
+    }, false);
 
     addCtrlBinderToRouterItem(binder, item, result.validMethods);
 }
@@ -272,19 +272,19 @@ void HttpControllersRouter::registerWebSocketController(
     auto binder = std::make_shared<WebsocketControllerBinder>();
     binder->handlerName_ = ctrlName;
     binder->middlewareNames_ = result.middlewares;
-    drogon::app().getLoop()->queueInLoop([this, binder, ctrlName, path]() {
+    drogon::app().getLoop()->async([this, binder, ctrlName, path]() {
         auto &object_ = DrClassMap::getSingleInstance(ctrlName);
         auto controller =
             std::dynamic_pointer_cast<WebSocketControllerBase>(object_);
         if (!controller)
         {
-            LOG_ERROR << "Websocket controller class not found: " << ctrlName;
+            ErrorL << "Websocket controller class not found: " << ctrlName;
             wsCtrlMap_.erase(path);
             return;
         }
 
         binder->controller_ = controller;
-    });
+    }, false);
 
     addCtrlBinderToRouterItem(binder, item, result.validMethods);
 }
@@ -300,12 +300,12 @@ void HttpControllersRouter::registerWebSocketControllerRegex(
     auto binder = std::make_shared<WebsocketControllerBinder>();
     binder->handlerName_ = ctrlName;
     binder->middlewareNames_ = result.middlewares;
-    drogon::app().getLoop()->queueInLoop([binder, ctrlName]() {
+    drogon::app().getLoop()->async([binder, ctrlName]() {
         auto &object_ = DrClassMap::getSingleInstance(ctrlName);
         auto controller =
             std::dynamic_pointer_cast<WebSocketControllerBase>(object_);
         binder->controller_ = controller;
-    });
+    }, false);
     struct RegExWebSocketControllerRouterItem router;
     router.pathPattern_ = regExp;
     router.regex_ = regExp;
@@ -324,10 +324,10 @@ void HttpControllersRouter::addHttpRegex(
     binderInfo->middlewareNames_ = middlewareNames;
     binderInfo->handlerName_ = handlerName;
     binderInfo->binderPtr_ = binder;
-    drogon::app().getLoop()->queueInLoop([binderInfo]() {
+    drogon::app().getLoop()->async([binderInfo]() {
         // Recreate this with the correct number of threads.
         binderInfo->responseCache_ = IOThreadStorage<HttpResponsePtr>();
-    });
+    }, false);
 
     addRegexCtrlBinder(binderInfo, regExp, regExp, validMethods);
 }
@@ -367,19 +367,19 @@ void HttpControllersRouter::addHttpPath(
                 auto place = (size_t)std::stoi(result);
                 if (place > binder->paramCount() || place == 0)
                 {
-                    LOG_ERROR << "Parameter placeholder(value=" << place
+                    ErrorL << "Parameter placeholder(value=" << place
                               << ") out of range (1 to " << binder->paramCount()
                               << ")";
-                    LOG_ERROR << "Path pattern: " << path;
+                    ErrorL << "Path pattern: " << path;
                     exit(1);
                 }
                 if (!std::all_of(places.begin(),
                                  places.end(),
                                  [place](size_t i) { return i != place; }))
                 {
-                    LOG_ERROR << "Parameter placeholders are duplicated: index="
+                    ErrorL << "Parameter placeholders are duplicated: index="
                               << place;
-                    LOG_ERROR << "Path pattern: " << path;
+                    ErrorL << "Path pattern: " << path;
                     exit(1);
                 }
                 places.push_back(place);
@@ -395,20 +395,20 @@ void HttpControllersRouter::addHttpPath(
                     auto place = (size_t)std::stoi(num);
                     if (place > binder->paramCount() || place == 0)
                     {
-                        LOG_ERROR << "Parameter placeholder(value=" << place
+                        ErrorL << "Parameter placeholder(value=" << place
                                   << ") out of range (1 to "
                                   << binder->paramCount() << ")";
-                        LOG_ERROR << "Path pattern: " << path;
+                        ErrorL << "Path pattern: " << path;
                         exit(1);
                     }
                     if (!std::all_of(places.begin(),
                                      places.end(),
                                      [place](size_t i) { return i != place; }))
                     {
-                        LOG_ERROR
+                        ErrorL
                             << "Parameter placeholders are duplicated: index="
                             << place;
-                        LOG_ERROR << "Path pattern: " << path;
+                        ErrorL << "Path pattern: " << path;
                         exit(1);
                     }
                     places.push_back(place);
@@ -421,10 +421,10 @@ void HttpControllersRouter::addHttpPath(
                                          return i != placeIndex;
                                      }))
                     {
-                        LOG_ERROR
+                        ErrorL
                             << "Parameter placeholders are duplicated: index="
                             << placeIndex;
-                        LOG_ERROR << "Path pattern: " << path;
+                        ErrorL << "Path pattern: " << path;
                         exit(1);
                     }
                     places.push_back(placeIndex);
@@ -452,10 +452,10 @@ void HttpControllersRouter::addHttpPath(
                     auto place = (size_t)std::stoi(result);
                     if (place > binder->paramCount() || place == 0)
                     {
-                        LOG_ERROR << "Parameter placeholder(value=" << place
+                        ErrorL << "Parameter placeholder(value=" << place
                                   << ") out of range (1 to "
                                   << binder->paramCount() << ")";
-                        LOG_ERROR << "Path pattern: " << path;
+                        ErrorL << "Path pattern: " << path;
                         exit(1);
                     }
                     if (!std::all_of(places.begin(),
@@ -470,10 +470,10 @@ void HttpControllersRouter::addHttpPath(
                                     return item.second != place;
                                 }))
                     {
-                        LOG_ERROR << "Parameter placeholders are "
+                        ErrorL << "Parameter placeholders are "
                                      "duplicated: index="
                                   << place;
-                        LOG_ERROR << "Path pattern: " << path;
+                        ErrorL << "Path pattern: " << path;
                         exit(1);
                     }
                     parametersPlaces.emplace_back(results[1].str(), place);
@@ -490,10 +490,10 @@ void HttpControllersRouter::addHttpPath(
                         auto place = (size_t)std::stoi(num);
                         if (place > binder->paramCount() || place == 0)
                         {
-                            LOG_ERROR << "Parameter placeholder(value=" << place
+                            ErrorL << "Parameter placeholder(value=" << place
                                       << ") out of range (1 to "
                                       << binder->paramCount() << ")";
-                            LOG_ERROR << "Path pattern: " << path;
+                            ErrorL << "Path pattern: " << path;
                             exit(1);
                         }
                         if (!std::all_of(places.begin(),
@@ -508,10 +508,10 @@ void HttpControllersRouter::addHttpPath(
                                         return item.second != place;
                                     }))
                         {
-                            LOG_ERROR << "Parameter placeholders are "
+                            ErrorL << "Parameter placeholders are "
                                          "duplicated: index="
                                       << place;
-                            LOG_ERROR << "Path pattern: " << path;
+                            ErrorL << "Path pattern: " << path;
                             exit(1);
                         }
                         parametersPlaces.emplace_back(results[1].str(), place);
@@ -531,10 +531,10 @@ void HttpControllersRouter::addHttpPath(
                                         return item.second != placeIndex;
                                     }))
                         {
-                            LOG_ERROR << "Parameter placeholders are "
+                            ErrorL << "Parameter placeholders are "
                                          "duplicated: index="
                                       << placeIndex;
-                            LOG_ERROR << "Path pattern: " << path;
+                            ErrorL << "Path pattern: " << path;
                             exit(1);
                         }
                         parametersPlaces.emplace_back(results[1].str(),
@@ -554,10 +554,10 @@ void HttpControllersRouter::addHttpPath(
     binderInfo->binderPtr_ = binder;
     binderInfo->parameterPlaces_ = std::move(places);
     binderInfo->queryParametersPlaces_ = std::move(parametersPlaces);
-    drogon::app().getLoop()->queueInLoop([binderInfo]() {
+    drogon::app().getLoop()->async([binderInfo]() {
         // Recreate this with the correct number of threads.
         binderInfo->responseCache_ = IOThreadStorage<HttpResponsePtr>();
-    });
+    }, false);
 
     // Create or update RouterItem
     auto pathParameterPattern =
@@ -670,7 +670,7 @@ RouteResult HttpControllersRouter::route(const HttpRequestImplPtr &req)
         if (place > params.size())
             params.resize(place);
         params[place - 1] = result[j].str();
-        LOG_TRACE << "place=" << place << " para:" << params[place - 1];
+        TraceL << "place=" << place << " para:" << params[place - 1];
     }
 
     if (!binder->queryParametersPlaces_.empty())

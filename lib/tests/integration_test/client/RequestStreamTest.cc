@@ -30,13 +30,13 @@ void checkStreamRequest(T &&TEST_CTX,
             const trantor::TcpConnectionPtr &conn) {
             if (conn->disconnected())
             {
-                LOG_INFO << "Disconnected from server";
+                InfoL << "Disconnected from server";
                 CHECK(respString->substr(0, expectedResp.size()) ==
                       expectedResp);
                 promise.set_value();
                 return;
             }
-            LOG_INFO << "Connected to server";
+            InfoL << "Connected to server";
             CHECK(conn->connected());
             for (auto &data : dataToSend)
             {
@@ -70,7 +70,7 @@ DROGON_TEST(RequestStreamTest)
         }
         else
         {
-            LOG_INFO << "Server does not enable request stream.";
+            InfoL << "Server does not enable request stream.";
         }
     }
 
@@ -99,7 +99,7 @@ DROGON_TEST(RequestStreamTest)
         return;
     }
 
-    LOG_INFO << "Test request stream";
+    InfoL << "Test request stream";
 
     const auto uniqueSuffix = std::to_string(
         std::chrono::steady_clock::now().time_since_epoch().count());

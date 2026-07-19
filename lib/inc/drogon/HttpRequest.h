@@ -44,7 +44,7 @@ using HttpRequestPtr = std::shared_ptr<HttpRequest>;
 template <typename T>
 T fromRequest(const HttpRequest &)
 {
-    LOG_ERROR << "You must specialize the fromRequest template for the type of "
+    ErrorL << "You must specialize the fromRequest template for the type of "
               << DrClassMap::demangle(typeid(T).name());
     exit(1);
 }
@@ -57,7 +57,7 @@ T fromRequest(const HttpRequest &)
 template <typename T>
 HttpRequestPtr toRequest(T &&)
 {
-    LOG_ERROR << "You must specialize the toRequest template for the type of "
+    ErrorL << "You must specialize the toRequest template for the type of "
               << DrClassMap::demangle(typeid(T).name());
     exit(1);
 }
@@ -341,7 +341,7 @@ class DROGON_EXPORT HttpRequest
             }
             catch (const std::exception &e)
             {
-                LOG_ERROR << e.what();
+                ErrorL << e.what();
                 return std::optional<T>{};
             }
         }

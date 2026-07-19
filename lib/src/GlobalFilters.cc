@@ -25,7 +25,7 @@ void GlobalFilters::initAndStart(const Json::Value &config)
                 }
                 else
                 {
-                    LOG_ERROR << "Filter " << filter.asString()
+                    ErrorL << "Filter " << filter.asString()
                               << " not found!";
                 }
             }
@@ -45,7 +45,7 @@ void GlobalFilters::initAndStart(const Json::Value &config)
                 }
                 else
                 {
-                    LOG_ERROR << "exempt must be a string array!";
+                    ErrorL << "exempt must be a string array!";
                 }
             }
             if (!regexStr.empty())
@@ -62,7 +62,7 @@ void GlobalFilters::initAndStart(const Json::Value &config)
         }
         else
         {
-            LOG_ERROR << "exempt must be a string or string array!";
+            ErrorL << "exempt must be a string or string array!";
         }
     }
     std::weak_ptr<GlobalFilters> weakPtr = shared_from_this();

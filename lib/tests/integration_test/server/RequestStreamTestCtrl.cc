@@ -39,7 +39,7 @@ class RequestStreamTestCtrl : public HttpController<RequestStreamTestCtrl>
     {
         if (!stream)
         {
-            LOG_INFO << "stream mode is not enabled";
+            InfoL << "stream mode is not enabled";
             auto resp = HttpResponse::newHttpResponse();
             resp->setStatusCode(k400BadRequest);
             resp->setBody("no stream");
@@ -62,7 +62,7 @@ class RequestStreamTestCtrl : public HttpController<RequestStreamTestCtrl>
                     }
                     catch (const std::exception &e)
                     {
-                        LOG_ERROR << "stream error: " << e.what();
+                        ErrorL << "stream error: " << e.what();
                     }
                     resp->setStatusCode(k400BadRequest);
                     resp->setBody("stream error");
@@ -87,7 +87,7 @@ class RequestStreamTestCtrl : public HttpController<RequestStreamTestCtrl>
 
         if (!stream)
         {
-            LOG_INFO << "stream mode is not enabled";
+            InfoL << "stream mode is not enabled";
             auto resp = HttpResponse::newHttpResponse();
             resp->setStatusCode(k400BadRequest);
             resp->setBody("no stream");
@@ -129,11 +129,11 @@ class RequestStreamTestCtrl : public HttpController<RequestStreamTestCtrl>
                     }
                     catch (const StreamError &e)
                     {
-                        LOG_ERROR << "stream error: " << e.what();
+                        ErrorL << "stream error: " << e.what();
                     }
                     catch (const std::exception &e)
                     {
-                        LOG_ERROR << "multipart error: " << e.what();
+                        ErrorL << "multipart error: " << e.what();
                     }
                     resp->setStatusCode(k400BadRequest);
                     resp->setBody("error\n");

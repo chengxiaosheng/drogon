@@ -1,4 +1,4 @@
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #ifdef _WIN32
 #include <ws2tcpip.h>
 #else
@@ -18,7 +18,7 @@ int main()
         "/",
         [](const HttpRequestPtr &request,
            std::function<void(const HttpResponsePtr &)> &&callback) {
-            LOG_INFO << "connected:"
+            InfoL << "connected:"
                      << (request->connected() ? "true" : "false");
             auto resp = HttpResponse::newHttpResponse();
             resp->setBody("Hello, World!");
@@ -73,7 +73,7 @@ int main()
 
     app()
         .setBeforeListenSockOptCallback([](int fd) {
-            LOG_INFO << "setBeforeListenSockOptCallback:" << fd;
+            InfoL << "setBeforeListenSockOptCallback:" << fd;
 #ifdef _WIN32
 #elif __linux__
             int enable = 1;
@@ -81,7 +81,7 @@ int main()
                     fd, IPPROTO_TCP, TCP_FASTOPEN, &enable, sizeof(enable)) ==
                 -1)
             {
-                LOG_INFO << "setsockopt TCP_FASTOPEN failed";
+                InfoL << "setsockopt TCP_FASTOPEN failed";
             }
 #else
 #endif
@@ -92,6 +92,6 @@ int main()
     // on multiple IP addresses by adding multiple listeners. For example, if
     // you want the server also listen on 127.0.0.1 port 5555. Just add another
     // line of addListener("127.0.0.1", 5555)
-    LOG_INFO << "Server running on 127.0.0.1:8848";
+    InfoL << "Server running on 127.0.0.1:8848";
     app().addListener("127.0.0.1", 8848).run();
 }

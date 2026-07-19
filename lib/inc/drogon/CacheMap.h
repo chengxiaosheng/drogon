@@ -14,8 +14,10 @@
 
 #pragma once
 
-#include <trantor/net/EventLoop.h>
-#include <trantor/utils/Logger.h>
+#include "Poller/Timer.h"
+
+#include <Poller/EventPoller.h>
+#include <Util/logger.h>
 #include <atomic>
 #include <deque>
 #include <map>
@@ -88,7 +90,7 @@ class CacheMap
      * @details The max delay of the CacheMap is about
      * tickInterval*(bucketsNumPerWheel^wheelsNum) seconds.
      */
-    CacheMap(trantor::EventLoop *loop,
+    CacheMap(const std::shared_ptr<toolkit::EventPoller> &loop,
              float tickInterval = TICK_INTERVAL,
              size_t wheelsNum = WHEELS_NUM,
              size_t bucketsNumPerWheel = BUCKET_NUM_PER_WHEEL,
@@ -109,7 +111,7 @@ class CacheMap
         }
         if (tickInterval_ > 0 && wheelsNumber_ > 0 && bucketsNumPerWheel_ > 0)
         {
-            timerId_ = loop_->runEvery(
+            timerId_ =  std::make_shared<toolkit::Timer>(
                 tickInterval_, [this, ctrlBlockPtr = ctrlBlockPtr_]() {
                     std::lock_guard<std::mutex> lock(ctrlBlockPtr->mtx);
                     if (ctrlBlockPtr->destructed)
@@ -133,7 +135,7 @@ class CacheMap
                         }
                         pow = pow * bucketsNumPerWheel_;
                     }
-                });
+                }, loop_);
             loop_->runOnQuit([ctrlBlockPtr = ctrlBlockPtr_] {
                 std::lock_guard<std::mutex> lock(ctrlBlockPtr->mtx);
                 ctrlBlockPtr->loopEnded = true;
@@ -152,13 +154,13 @@ class CacheMap
         map_.clear();
         if (!ctrlBlockPtr_->loopEnded)
         {
-            loop_->invalidateTimer(timerId_);
+            timerId_.reset();
         }
         for (auto iter = wheels_.rbegin(); iter != wheels_.rend(); ++iter)
         {
             iter->clear();
         }
-        LOG_TRACE << "CacheMap destruct!";
+        TraceL << "CacheMap destruct!";
     }
 
     struct MapValue
@@ -400,7 +402,7 @@ class CacheMap
      *
      * @return trantor::EventLoop*
      */
-    trantor::EventLoop *getLoop()
+    std::shared_ptr<toolkit::EventPoller> getLoop()
     {
         return loop_;
     }
@@ -455,8 +457,8 @@ class CacheMap
 
     std::mutex mtx_;
     std::mutex bucketMutex_;
-    trantor::TimerId timerId_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::Timer> timerId_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
 
     float tickInterval_;
     size_t wheelsNumber_;

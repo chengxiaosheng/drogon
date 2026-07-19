@@ -16,7 +16,7 @@
 
 #include <drogon/Cookie.h>
 #include <drogon/HttpClient.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/Resolver.h>
 #include <trantor/net/TcpClient.h>
 #include <atomic>
@@ -35,12 +35,12 @@ class HttpClientImpl final : public HttpClient,
                              public std::enable_shared_from_this<HttpClientImpl>
 {
   public:
-    HttpClientImpl(trantor::EventLoop *loop,
+    HttpClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                    const trantor::InetAddress &addr,
                    bool useSSL = false,
                    bool useOldTLS = false,
                    bool validateCert = true);
-    HttpClientImpl(trantor::EventLoop *loop,
+    HttpClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                    const std::string &hostString,
                    bool useOldTLS = false,
                    bool validateCert = true);
@@ -51,7 +51,7 @@ class HttpClientImpl final : public HttpClient,
                      HttpReqCallback &&callback,
                      double timeout = 0) override;
 
-    trantor::EventLoop *getLoop() override
+    std::shared_ptr<toolkit::EventPoller> getLoop() override
     {
         return loop_;
     }
@@ -157,7 +157,7 @@ class HttpClientImpl final : public HttpClient,
 
   private:
     std::shared_ptr<trantor::TcpClient> tcpClientPtr_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     trantor::InetAddress serverAddr_;
     bool useSSL_;
     bool validateCert_;

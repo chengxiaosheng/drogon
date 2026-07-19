@@ -17,8 +17,8 @@
 #include <drogon/Session.h>
 #include <drogon/drogon_callbacks.h>
 #include <drogon/CacheMap.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoop.h>
+#include <Util/util.h>
+#include <Poller/EventPoller.h>
 #include <functional>
 #include <memory>
 #include <string>
@@ -27,13 +27,13 @@
 
 namespace drogon
 {
-class SessionManager : public trantor::NonCopyable
+class SessionManager : public toolkit::noncopyable
 {
   public:
     using IdGeneratorCallback = std::function<std::string()>;
 
     SessionManager(
-        trantor::EventLoop *loop,
+        const std::shared_ptr<toolkit::EventPoller> &loop,
         size_t timeout,
         const std::vector<AdviceStartSessionCallback> &startAdvices,
         const std::vector<AdviceDestroySessionCallback> &destroyAdvices,
@@ -49,7 +49,7 @@ class SessionManager : public trantor::NonCopyable
 
   private:
     std::unique_ptr<CacheMap<std::string, SessionPtr>> sessionMapPtr_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     size_t timeout_;
     const std::vector<AdviceStartSessionCallback> &sessionStartAdvices_;
     const std::vector<AdviceDestroySessionCallback> &sessionDestroyAdvices_;

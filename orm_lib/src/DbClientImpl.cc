@@ -27,6 +27,8 @@
 #include "sqlite3_impl/Sqlite3Connection.h"
 #endif
 #include "TransactionImpl.h"
+#include "Thread/WorkThreadPool.h"
+
 #include <drogon/drogon.h>
 #include <drogon/orm/DbClient.h>
 #include <drogon/orm/Exception.h>
@@ -39,7 +41,7 @@
 #include <unistd.h>
 #endif
 #include <thread>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/Channel.h>
 #include <unordered_set>
 #include <vector>
@@ -57,31 +59,31 @@ DbClientImpl::DbClientImpl(const std::string &connInfo,
 #endif
     : numberOfConnections_(connNum),
 #if LIBPQ_SUPPORTS_BATCH_MODE
-      autoBatch_(autoBatch),
+      autoBatch_(autoBatch)
 #endif
-      loops_(type == ClientType::Sqlite3
-                 ? 1
-                 : (connNum < std::thread::hardware_concurrency()
-                        ? connNum
-                        : std::thread::hardware_concurrency()),
-             "DbLoop")
+      // loops_(type == ClientType::Sqlite3
+      //            ? 1
+      //            : (connNum < std::thread::hardware_concurrency()
+      //                   ? connNum
+      //                   : std::thread::hardware_concurrency()),
+      //        "DbLoop")
 {
     type_ = type;
     connectionInfo_ = connInfo;
-    LOG_TRACE << "type=" << (int)type;
+    TraceL << "type=" << (int)type;
     assert(connNum > 0);
 }
 
 void DbClientImpl::init()
 {
-    // LOG_DEBUG << loops_.getLoopNum();
-    loops_.start();
+    // DebugL << loops_.getLoopNum();
+    // loops_.start();
     if (type_ == ClientType::PostgreSQL || type_ == ClientType::Mysql)
     {
         for (size_t i = 0; i < numberOfConnections_; ++i)
         {
-            auto loop = loops_.getNextLoop();
-            loop->runInLoop([this, loop]() { newConnection(loop); });
+            auto loop = toolkit::WorkThreadPool::Instance()[i];
+            loop->async([this, loop]() { newConnection(loop); });
         }
     }
     else if (type_ == ClientType::Sqlite3)
@@ -156,7 +158,7 @@ void DbClientImpl::execSql(
             }
             else
             {
-                // LOG_TRACE << "Push query to buffer";
+                // TraceL << "Push query to buffer";
                 std::shared_ptr<SqlCmd> cmd =
                     std::make_shared<SqlCmd>(std::string_view{sql, sqlLength},
                                              paraNum,
@@ -221,7 +223,8 @@ void DbClientImpl::newTransactionAsync(
                     std::make_shared<std::weak_ptr<std::function<void(
                         const std::shared_ptr<Transaction> &)>>>();
                 auto timeoutFlagPtr = std::make_shared<TaskTimeoutFlag>(
-                    loops_.getNextLoop(),
+                    toolkit::WorkThreadPool::Instance().getPoller(),
+                    // loops_.getNextLoop(),
                     std::chrono::duration<double>(timeout_),
                     [newCallbackPtr, callbackPtr, this]() {
                         auto cbPtr = (*newCallbackPtr).lock();
@@ -296,7 +299,7 @@ void DbClientImpl::makeTrans(
                     return;
                 }
             }
-            conn->loop()->queueInLoop([weakThis, conn]() {
+            conn->loop()->async([weakThis, conn]() {
                 auto thisPtr = weakThis.lock();
                 if (!thisPtr)
                     return;
@@ -311,7 +314,7 @@ void DbClientImpl::makeTrans(
                     thisPtr->handleNewTask(connPtr);
                 });
                 thisPtr->handleNewTask(conn);
-            });
+            }, false);
         },
         transType);
     trans->doBegin();
@@ -319,8 +322,8 @@ void DbClientImpl::makeTrans(
     {
         trans->setTimeout(timeout_);
     }
-    conn->loop()->queueInLoop(
-        [callback = std::move(callback), trans]() { callback(trans); });
+    conn->loop()->async(
+        [callback = std::move(callback), trans]() { callback(trans); }, false);
 }
 
 std::shared_ptr<Transaction> DbClientImpl::newTransaction(
@@ -387,7 +390,7 @@ void DbClientImpl::handleNewTask(const DbConnectionPtr &connPtr)
     }
 }
 
-DbConnectionPtr DbClientImpl::newConnection(trantor::EventLoop *loop)
+DbConnectionPtr DbClientImpl::newConnection(const std::shared_ptr<toolkit::EventPoller> &loop)
 {
     DbConnectionPtr connPtr;
     if (type_ == ClientType::PostgreSQL)
@@ -444,16 +447,17 @@ DbConnectionPtr DbClientImpl::newConnection(trantor::EventLoop *loop)
         auto loop = closeConnPtr->loop();
         // closeConnPtr may be not valid. Close the connection file descriptor.
         closeConnPtr->disconnect();
-        loop->runAfter(1, [weakPtr, loop, closeConnPtr] {
+        loop->doDelayTask(1 * 1000, [weakPtr, loop, closeConnPtr] {
             auto thisPtr = weakPtr.lock();
             if (!thisPtr)
-                return;
+                return 0;
 
             thisPtr->newConnection(loop);
+            return 0;
         });
     });
     connPtr->setOkCallback([weakPtr](const DbConnectionPtr &okConnPtr) {
-        LOG_TRACE << "connected!";
+        TraceL << "connected!";
         auto thisPtr = weakPtr.lock();
         if (!thisPtr)
             return;
@@ -513,7 +517,8 @@ void DbClientImpl::execSqlWithTimeout(
         std::make_shared<std::function<void(const std::exception_ptr &)>>(
             std::move(ecb));
     auto timeoutFlagPtr = std::make_shared<drogon::TaskTimeoutFlag>(
-        loops_.getNextLoop(),
+        toolkit::WorkThreadPool::Instance().getPoller(),
+        // loops_.getNextLoop(),
         std::chrono::duration<double>(timeout_),
         [cmd, ecpPtr, thisPtr = shared_from_this()]() {
             auto cbPtr = (*cmd).lock();
@@ -560,7 +565,7 @@ void DbClientImpl::execSqlWithTimeout(
             }
             else
             {
-                // LOG_TRACE << "Push query to buffer";
+                // TraceL << "Push query to buffer";
                 auto command =
                     std::make_shared<SqlCmd>(std::string_view{sql, sqlLength},
                                              paraNum,

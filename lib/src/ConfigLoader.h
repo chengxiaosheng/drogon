@@ -14,13 +14,14 @@
 
 #pragma once
 
+#include "Util/util.h"
+
 #include <json/json.h>
 #include <string>
-#include <trantor/utils/NonCopyable.h>
 
 namespace drogon
 {
-class ConfigLoader : public trantor::NonCopyable
+class ConfigLoader : public toolkit::noncopyable
 {
   public:
     explicit ConfigLoader(const std::string &configFile) noexcept(false);

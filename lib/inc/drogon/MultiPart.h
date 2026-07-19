@@ -152,7 +152,7 @@ class DROGON_EXPORT MultiPartParser
             }
             catch (const std::exception &e)
             {
-                LOG_ERROR << e.what();
+                ErrorL << e.what();
                 return std::optional<T>{};
             }
         }

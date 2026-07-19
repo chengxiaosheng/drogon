@@ -14,7 +14,7 @@
 
 #include <drogon/orm/Field.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <stdlib.h>
 
 using namespace drogon::orm;
@@ -43,7 +43,7 @@ std::string Field::as<std::string>() const
     {
         auto data_ = result_.getValue(row_, column_);
         auto dataLength_ = result_.getLength(row_, column_);
-        //    LOG_DEBUG << "dataLength_=" << dataLength_ << " str=" << data_;
+        //    DebugL << "dataLength_=" << dataLength_ << " str=" << data_;
         return std::string(data_, dataLength_);
     }
     else
@@ -99,12 +99,12 @@ const char *Field::c_str() const
 // {
 //     auto data_ = result_.getValue(row_, column_);
 //     auto dataLength_ = result_.getLength(row_, column_);
-//     LOG_DEBUG<<"dataLength_="<<dataLength_;
+//     DebugL<<"dataLength_="<<dataLength_;
 //     for(int i=0;i<dataLength_;i++)
 //     {
-//         LOG_DEBUG<<"data["<<i<<"]="<<(int)data_[i];
+//         DebugL<<"data["<<i<<"]="<<(int)data_[i];
 //     }
-//     LOG_DEBUG<<data_;
+//     DebugL<<data_;
 //     return std::vector<short>((short *)data_,(short *)(data_ + dataLength_));
 // }
 

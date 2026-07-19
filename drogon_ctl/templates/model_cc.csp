@@ -211,7 +211,7 @@ const std::string &[[className]]::getColumnName(size_t index) noexcept(false)
         size_t offset = (size_t)indexOffset;
         if(offset + {%cols.size()%} > r.size())
         {
-            LOG_FATAL << "Invalid SQL result for this model";
+            ErrorL << "Invalid SQL result for this model";
             return;
         }
         size_t index;
@@ -305,7 +305,7 @@ const std::string &[[className]]::getColumnName(size_t index) noexcept(false)
 {
     if(pMasqueradingVector.size() != {%cols.size()%})
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
 <%c++
@@ -642,7 +642,7 @@ void [[className]]::updateByMasqueradedJson(const Json::Value &pJson,
 {
     if(pMasqueradingVector.size() != {%cols.size()%})
     {
-        LOG_ERROR << "Bad masquerading vector";
+        ErrorL << "Bad masquerading vector";
         return;
     }
 <%c++
@@ -1261,7 +1261,7 @@ Json::Value [[className]]::toMasqueradedJson(
 }%>
         return ret;
     }
-    LOG_ERROR << "Masquerade failed";
+    ErrorL << "Masquerade failed";
 <%c++for(auto col:cols){%>
     if(get{%col.colTypeName_%}())
     {

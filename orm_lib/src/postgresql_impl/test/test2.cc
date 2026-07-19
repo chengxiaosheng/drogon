@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <string>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <thread>
 #include <chrono>
 
@@ -47,7 +47,7 @@ int main()
         DbClient::newPgClient("host=127.0.0.1 port=5432 dbname=test user=antao",
                               1);
     std::this_thread::sleep_for(1s);
-    LOG_DEBUG << "start!";
+    DebugL << "start!";
     {
         auto trans = client->newTransaction([](bool committed) {
             std::cout << "The transaction submission "

@@ -33,14 +33,14 @@ static const size_t kDefaultDNSTimeout{600};
 
 void HttpClientImpl::createTcpClient()
 {
-    LOG_TRACE << "New TcpClient," << serverAddr_.toIpPort();
+    TraceL << "New TcpClient," << serverAddr_.toIpPort();
     tcpClientPtr_ =
         std::make_shared<trantor::TcpClient>(loop_, serverAddr_, "httpClient");
 
     if (useSSL_ && utils::supportsTls())
     {
-        LOG_TRACE << "useOldTLS=" << useOldTLS_;
-        LOG_TRACE << "domain=" << domain_;
+        TraceL << "useOldTLS=" << useOldTLS_;
+        TraceL << "domain=" << domain_;
         auto policy = trantor::TLSPolicy::defaultClientPolicy();
         policy->setUseOldTLS(useOldTLS_)
             .setValidate(validateCert_)
@@ -70,7 +70,7 @@ void HttpClientImpl::createTcpClient()
                 connPtr->setContext(
                     std::make_shared<HttpResponseParser>(connPtr));
                 // send request;
-                LOG_TRACE << "Connection established!";
+                TraceL << "Connection established!";
                 while (thisPtr->pipeliningCallbacks_.size() <=
                            thisPtr->pipeliningDepth_ &&
                        !thisPtr->requestsBuffer_.empty())
@@ -87,7 +87,7 @@ void HttpClientImpl::createTcpClient()
             }
             else
             {
-                LOG_TRACE << "connection disconnect";
+                TraceL << "connection disconnect";
                 auto responseParser = connPtr->getContext<HttpResponseParser>();
                 if (responseParser && responseParser->parseResponseOnClose() &&
                     responseParser->gotAll())
@@ -140,14 +140,14 @@ void HttpClientImpl::createTcpClient()
             thisPtr->onError(ReqResult::EncryptionFailure);
         else
         {
-            LOG_FATAL << "Invalid value for SSLError";
+            ErrorL << "Invalid value for SSLError";
             abort();
         }
     });
     tcpClientPtr_->connect();
 }
 
-HttpClientImpl::HttpClientImpl(trantor::EventLoop *loop,
+HttpClientImpl::HttpClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                                const trantor::InetAddress &addr,
                                bool useSSL,
                                bool useOldTLS,
@@ -160,7 +160,7 @@ HttpClientImpl::HttpClientImpl(trantor::EventLoop *loop,
 {
 }
 
-HttpClientImpl::HttpClientImpl(trantor::EventLoop *loop,
+HttpClientImpl::HttpClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                                const std::string &hostString,
                                bool useOldTLS,
                                bool validateCert)
@@ -256,16 +256,16 @@ HttpClientImpl::HttpClientImpl(trantor::EventLoop *loop,
     {
         isDomainName_ = true;
     }
-    LOG_TRACE << "userSSL=" << useSSL_ << " domain=" << domain_;
+    TraceL << "userSSL=" << useSSL_ << " domain=" << domain_;
 }
 
 HttpClientImpl::~HttpClientImpl()
 {
-    LOG_TRACE << "Deconstruction HttpClient";
-    if (resolverPtr_ && !(loop_->isInLoopThread()))
+    TraceL << "Deconstruction HttpClient";
+    if (resolverPtr_ && !(loop_->isCurrentThread()))
     {
         // Make sure the resolverPtr_ is destroyed in the correct thread.
-        loop_->queueInLoop([resolverPtr = std::move(resolverPtr_)]() {});
+        loop_->async([resolverPtr = std::move(resolverPtr_)]() {});
     }
 }
 
@@ -274,7 +274,7 @@ void HttpClientImpl::sendRequest(const drogon::HttpRequestPtr &req,
                                  double timeout)
 {
     auto thisPtr = shared_from_this();
-    loop_->runInLoop([thisPtr, req, callback = callback, timeout]() mutable {
+    loop_->async([thisPtr, req, callback = callback, timeout]() mutable {
         thisPtr->sendRequestInLoop(req, std::move(callback), timeout);
     });
 }
@@ -284,7 +284,7 @@ void HttpClientImpl::sendRequest(const drogon::HttpRequestPtr &req,
                                  double timeout)
 {
     auto thisPtr = shared_from_this();
-    loop_->runInLoop(
+    loop_->async(
         [thisPtr, req, callback = std::move(callback), timeout]() mutable {
             thisPtr->sendRequestInLoop(req, std::move(callback), timeout);
         });
@@ -322,17 +322,17 @@ void HttpClientImpl::sendRequestInLoop(const HttpRequestPtr &req,
                                                 shared_from_this(),
                                                 req);
 
-    loop_->runAfter(
+    loop_->doDelayTask(
         timeout,
         [weakCallbackBackPtr =
-             std::weak_ptr<RequestCallbackParams>(callbackParamsPtr)] {
+             std::weak_ptr<RequestCallbackParams>(callbackParamsPtr)] () -> uint64_t {
             auto callbackParamsPtr = weakCallbackBackPtr.lock();
             if (callbackParamsPtr != nullptr)
             {
                 auto &thisPtr = callbackParamsPtr->clientPtr;
                 if (callbackParamsPtr->timeoutFlag)
                 {
-                    return;
+                    return 0;
                 }
 
                 callbackParamsPtr->timeoutFlag = true;
@@ -356,10 +356,11 @@ void HttpClientImpl::sendRequestInLoop(const HttpRequestPtr &req,
                                           const HttpResponsePtr &resp) {
                           if (callbackParamsPtr->timeoutFlag)
                           {
-                              return;
+                              return 0;
                           }
                           callbackParamsPtr->timeoutFlag = true;
                           (callbackParamsPtr->callback)(r, resp);
+                          return 0;
                       });
 }
 
@@ -388,7 +389,8 @@ static bool isValidIpAddr(const trantor::InetAddress &addr)
 void HttpClientImpl::sendRequestInLoop(const drogon::HttpRequestPtr &req,
                                        drogon::HttpReqCallback &&callback)
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     if (!static_cast<drogon::HttpRequestImpl *>(req.get())->passThrough())
     {
         req->addHeader("connection", "Keep-Alive");
@@ -462,12 +464,12 @@ void HttpClientImpl::sendRequestInLoop(const drogon::HttpRequestPtr &req,
         auto thisPtr = shared_from_this();
         resolverPtr_->resolve(
             domain_, [thisPtr](const trantor::InetAddress &addr) {
-                thisPtr->loop_->runInLoop([thisPtr, addr]() {
+                thisPtr->loop_->async([thisPtr, addr]() {
                     // Retrieve port from old serverAddr_
                     auto port = thisPtr->serverAddr_.portNetEndian();
                     thisPtr->serverAddr_ = addr;
                     thisPtr->serverAddr_.setPortNetEndian(port);
-                    LOG_TRACE << "dns:domain=" << thisPtr->domain_
+                    TraceL << "dns:domain=" << thisPtr->domain_
                               << ";ip=" << thisPtr->serverAddr_.toIp();
                     thisPtr->dns_ = false;
 
@@ -538,7 +540,7 @@ void HttpClientImpl::sendReq(const trantor::TcpConnectionPtr &connPtr,
     assert(req);
     auto implPtr = static_cast<HttpRequestImpl *>(req.get());
     implPtr->appendToBuffer(&buffer);
-    LOG_TRACE << "Send request:"
+    TraceL << "Send request:"
               << std::string(buffer.peek(), buffer.readableBytes());
     bytesSent_ += buffer.readableBytes();
     connPtr->send(std::move(buffer));
@@ -567,8 +569,8 @@ void HttpClientImpl::handleResponse(
     handleCookies(resp);
     cb.second(ReqResult::Ok, resp);
 
-    // LOG_TRACE << "pipelining buffer size=" <<
-    // pipeliningCallbacks_.size(); LOG_TRACE << "requests buffer size="
+    // TraceL << "pipelining buffer size=" <<
+    // pipeliningCallbacks_.size(); TraceL << "requests buffer size="
     // << requestsBuffer_.size();
 
     if (connPtr->connected())
@@ -606,13 +608,13 @@ void HttpClientImpl::onRecvMessage(const trantor::TcpConnectionPtr &connPtr,
 {
     auto responseParser = connPtr->getContext<HttpResponseParser>();
 
-    // LOG_TRACE << "###:" << msg->readableBytes();
+    // TraceL << "###:" << msg->readableBytes();
     auto msgSize = msg->readableBytes();
     while (msg->readableBytes() > 0)
     {
         if (pipeliningCallbacks_.empty())
         {
-            LOG_ERROR << "More responses than expected!";
+            ErrorL << "More responses than expected!";
             connPtr->shutdown();
             return;
         }
@@ -647,13 +649,13 @@ void HttpClientImpl::onRecvMessage(const trantor::TcpConnectionPtr &connPtr,
 HttpClientPtr HttpClient::newHttpClient(const std::string &ip,
                                         uint16_t port,
                                         bool useSSL,
-                                        trantor::EventLoop *loop,
+                                        const std::shared_ptr<toolkit::EventPoller> &loop,
                                         bool useOldTLS,
                                         bool validateCert)
 {
     bool isIpv6 = ip.find(':') == std::string::npos ? false : true;
     return std::make_shared<HttpClientImpl>(
-        loop == nullptr ? HttpAppFrameworkImpl::instance().getLoop() : loop,
+        loop == nullptr ? toolkit::EventPollerPool::Instance().getPoller() : loop,
         trantor::InetAddress(ip, port, isIpv6),
         useSSL,
         useOldTLS,
@@ -661,12 +663,12 @@ HttpClientPtr HttpClient::newHttpClient(const std::string &ip,
 }
 
 HttpClientPtr HttpClient::newHttpClient(const std::string &hostString,
-                                        trantor::EventLoop *loop,
+                                        const std::shared_ptr<toolkit::EventPoller> &loop,
                                         bool useOldTLS,
                                         bool validateCert)
 {
     return std::make_shared<HttpClientImpl>(
-        loop == nullptr ? HttpAppFrameworkImpl::instance().getLoop() : loop,
+        loop == nullptr ? toolkit::EventPollerPool::Instance().getPoller() : loop,
         hostString,
         useOldTLS,
         validateCert);
@@ -692,7 +694,7 @@ void HttpClientImpl::onError(ReqResult result)
 
 void HttpClientImpl::handleCookies(const HttpResponseImplPtr &resp)
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
     if (!enableCookies_)
         return;
     for (auto &iter : resp->getCookies())

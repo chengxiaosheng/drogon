@@ -25,7 +25,7 @@ class TestController : public drogon::HttpSimpleController<TestController>
     PATH_LIST_END
     TestController()
     {
-        LOG_DEBUG << "TestController constructor";
+        DebugL << "TestController constructor";
         auto collector = std::make_shared<
             drogon::monitoring::Collector<drogon::monitoring::Counter>>(
             "test_counter",

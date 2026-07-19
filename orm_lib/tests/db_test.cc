@@ -21,7 +21,7 @@
 #include <drogon/orm/DbTypes.h>
 #include <string_view>
 #include <drogon/orm/QueryBuilder.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 #include <stdlib.h>
 #include <chrono>
@@ -2896,7 +2896,7 @@ DROGON_TEST(SQLite3Test)
             using namespace drogon_model::sqlite3;
             Users user(r[0]);
             MANDATE(user.getValueOfUserId() == "pg1");
-            // LOG_INFO << "user:" << user.toJson().toStyledString();
+            // InfoL << "user:" << user.toJson().toStyledString();
             MANDATE(trantor::Date::now().secondsSinceEpoch() -
                         user.getValueOfCreateTime().secondsSinceEpoch() <=
                     1);
@@ -4258,7 +4258,7 @@ using namespace drogon;
 
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(trantor::Logger::LogLevel::kDebug);
+    trantor::Logger::setLogLevel(toolkit::LogLevel::kDebug);
 
 #if USE_MYSQL
     mysqlClient = DbClient::newMysqlClient(

@@ -43,7 +43,6 @@ inline std::string escapeConnString(const std::string &str)
 }
 
 static void initFastDbClients(IOThreadStorage<orm::DbClientPtr> &storage,
-                              const std::vector<trantor::EventLoop *> &ioLoops,
                               const std::string &connInfo,
                               ClientType dbType,
                               size_t connNum,
@@ -51,11 +50,11 @@ static void initFastDbClients(IOThreadStorage<orm::DbClientPtr> &storage,
                               double timeout)
 {
     storage.init([&](orm::DbClientPtr &c, size_t idx) {
-        assert(idx == ioLoops[idx]->index());
-        LOG_TRACE << "create fast database client for the thread " << idx;
+        // assert(idx == ioLoops[idx]->index());
+        TraceL << "create fast database client for the thread " << idx;
         c = std::shared_ptr<orm::DbClient>(
             new drogon::orm::DbClientLockFree(connInfo,
-                                              ioLoops[idx],
+                                              toolkit::EventPollerPool::Instance()[idx],
                                               dbType,
 #if LIBPQ_SUPPORTS_BATCH_MODE  // Bad code
                                               connNum,
@@ -70,8 +69,7 @@ static void initFastDbClients(IOThreadStorage<orm::DbClientPtr> &storage,
     });
 }
 
-void DbClientManager::createDbClients(
-    const std::vector<trantor::EventLoop *> &ioLoops)
+void DbClientManager::createDbClients()
 {
     assert(dbClientsMap_.empty());
     assert(dbFastClientsMap_.empty());
@@ -82,10 +80,8 @@ void DbClientManager::createDbClients(
             auto &cfg = std::get<PostgresConfig>(dbInfo.config_);
             if (cfg.isFast)
             {
-                dbFastClientsMap_[cfg.name] =
-                    IOThreadStorage<orm::DbClientPtr>();
+                dbFastClientsMap_[cfg.name] = IOThreadStorage<orm::DbClientPtr>();
                 initFastDbClients(dbFastClientsMap_[cfg.name],
-                                  ioLoops,
                                   dbInfo.connectionInfo_,
                                   ClientType::PostgreSQL,
                                   cfg.connectionNumber,
@@ -113,7 +109,6 @@ void DbClientManager::createDbClients(
                 dbFastClientsMap_[cfg.name] =
                     IOThreadStorage<orm::DbClientPtr>();
                 initFastDbClients(dbFastClientsMap_[cfg.name],
-                                  ioLoops,
                                   dbInfo.connectionInfo_,
                                   ClientType::Mysql,
                                   cfg.connectionNumber,
@@ -249,8 +244,8 @@ bool DbClientManager::areAllDbClientsAvailable() const noexcept
         if (!(pair.second)->hasAvailableConnections())
             return false;
     }
-    auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
-    if (loop && loop->index() < app().getThreadNum())
+
+    if (auto loop = toolkit::EventPollerPool::Instance().getPoller())
     {
         for (auto const &pair : dbFastClientsMap_)
         {
@@ -273,7 +268,7 @@ DbClientManager::~DbClientManager()
             // the main loop;
             std::promise<void> p;
             auto f = p.get_future();
-            drogon::getIOThreadStorageLoop(index)->runInLoop(
+            drogon::getIOThreadStorageLoop(index)->async(
                 [&clientPtr, &p]() {
                     clientPtr->closeAll();
                     p.set_value();

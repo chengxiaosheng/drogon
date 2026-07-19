@@ -15,7 +15,7 @@
 #pragma once
 
 #include <drogon/HttpAppFramework.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <memory>
 #include <vector>
 #include <limits>
@@ -57,7 +57,7 @@ namespace drogon
  * @endcode
  */
 template <typename C>
-class IOThreadStorage : public trantor::NonCopyable
+class IOThreadStorage
 {
   public:
     using ValueType = C;
@@ -73,9 +73,9 @@ class IOThreadStorage : public trantor::NonCopyable
                numThreads != (std::numeric_limits<size_t>::max)());
         // set the size to numThreads+1 to enable access to this in the main
         // thread.
-        storage_.reserve(numThreads + 1);
+        // storage_.reserve(numThreads + 1);
 
-        for (size_t i = 0; i <= numThreads; ++i)
+        for (size_t i = 0; i < numThreads; ++i)
         {
             storage_.emplace_back(std::forward<Args>(args)...);
         }
@@ -155,7 +155,7 @@ class IOThreadStorage : public trantor::NonCopyable
     std::vector<ValueType> storage_;
 };
 
-inline trantor::EventLoop *getIOThreadStorageLoop(size_t index) noexcept(false)
+inline std::shared_ptr<toolkit::EventPoller> getIOThreadStorageLoop(size_t index) noexcept(false)
 {
     if (index > drogon::app().getThreadNum())
     {

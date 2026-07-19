@@ -16,7 +16,7 @@
 #include "PostgreSQLResultImpl.h"
 #include <drogon/orm/Exception.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <exception>
 #include <memory>
 #include <algorithm>
@@ -77,19 +77,19 @@ int PgConnection::flush()
     return ret;
 }
 
-PgConnection::PgConnection(trantor::EventLoop *loop,
+PgConnection::PgConnection(const std::shared_ptr<toolkit::EventPoller> &loop,
                            const std::string &connInfo,
                            bool autoBatch)
     : DbConnection(loop),
-      autoBatch_(autoBatch),
       connectionPtr_(
           std::shared_ptr<PGconn>(PQconnectStart(connInfo.c_str()),
                                   [](PGconn *conn) { PQfinish(conn); })),
-      channel_(loop, PQsocket(connectionPtr_.get()))
+      channel_(loop, PQsocket(connectionPtr_.get())),
+      autoBatch_(autoBatch)
 {
     if (channel_.fd() < 0)
     {
-        LOG_ERROR << "Failed to create Postgres connection";
+        ErrorL << "Failed to create Postgres connection";
     }
 }
 
@@ -97,7 +97,7 @@ void PgConnection::init()
 {
     if (channel_.fd() < 0)
     {
-        LOG_ERROR << "Connection with Postgres could not be established";
+        ErrorL << "Connection with Postgres could not be established";
 
         if (closeCallback_)
         {
@@ -134,7 +134,7 @@ void PgConnection::init()
             else if (ret < 0)
             {
                 channel_.disableWriting();
-                LOG_ERROR << "PQflush error:"
+                ErrorL << "PQflush error:"
                           << PQerrorMessage(connectionPtr_.get());
                 return;
             }
@@ -152,7 +152,9 @@ void PgConnection::init()
 
 void PgConnection::handleClosed()
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
+
     if (status_ == ConnectStatus::Bad)
         return;
     status_ = ConnectStatus::Bad;
@@ -168,7 +170,7 @@ void PgConnection::disconnect()
     std::promise<int> pro;
     auto f = pro.get_future();
     auto thisPtr = shared_from_this();
-    loop_->runInLoop([thisPtr, &pro]() {
+    loop_->async([thisPtr, &pro]() {
         thisPtr->status_ = ConnectStatus::Bad;
         if (thisPtr->channel_.fd() >= 0)
         {
@@ -183,12 +185,14 @@ void PgConnection::disconnect()
 
 void PgConnection::pgPoll()
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
+
     auto connStatus = PQconnectPoll(connectionPtr_.get());
     switch (connStatus)
     {
         case PGRES_POLLING_FAILED:
-            LOG_ERROR << "!!!Pg connection failed: "
+            ErrorL << "!!!Pg connection failed: "
                       << PQerrorMessage(connectionPtr_.get());
             if (status_ == ConnectStatus::None)
             {
@@ -240,10 +244,10 @@ void PgConnection::execSqlInLoop(
     ResultCallback &&rcb,
     std::function<void(const std::exception_ptr &)> &&exceptCallback)
 {
-    LOG_TRACE << sql;
+    TraceL << sql;
     if (status_ != ConnectStatus::Ok)
     {
-        LOG_ERROR << "Connection is not ready";
+        ErrorL << "Connection is not ready";
         auto exceptPtr =
             std::make_exception_ptr(drogon::orm::BrokenConnection());
         exceptCallback(exceptPtr);
@@ -260,8 +264,8 @@ void PgConnection::execSqlInLoop(
                                  std::move(exceptCallback)));
     if (batchSqlCommands_.size() == 1 && !channel_.isWriting())
     {
-        loop_->queueInLoop(
-            [thisPtr = shared_from_this()]() { thisPtr->sendBatchedSql(); });
+        loop_->async(
+            [thisPtr = shared_from_this()]() { thisPtr->sendBatchedSql(); }, false);
     }
 }
 
@@ -313,7 +317,7 @@ void PgConnection::sendBatchedSql()
                                   cmd->parametersNumber_,
                                   NULL) == 0)
                 {
-                    LOG_ERROR << "send query error: "
+                    ErrorL << "send query error: "
                               << PQerrorMessage(connectionPtr_.get());
 
                     isWorking_ = false;
@@ -413,12 +417,14 @@ void PgConnection::sendBatchedSql()
 
 void PgConnection::handleRead()
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
+
     std::shared_ptr<PGresult> res;
 
     if (!PQconsumeInput(connectionPtr_.get()))
     {
-        LOG_ERROR << "Failed to consume pg input:"
+        ErrorL << "Failed to consume pg input:"
                   << PQerrorMessage(connectionPtr_.get());
         if (isWorking_)
         {
@@ -459,7 +465,7 @@ void PgConnection::handleRead()
              */
             if (!PQsendFlushRequest(connectionPtr_.get()))
             {
-                LOG_ERROR << "Failed to PQsendFlushRequest:"
+                ErrorL << "Failed to PQsendFlushRequest:"
                           << PQerrorMessage(connectionPtr_.get());
                 return;
             }
@@ -532,7 +538,7 @@ void PgConnection::handleFatalError(bool clearAll, bool isAbortPipeline)
         isAbortPipeline
             ? "Command didn't run because of an abort earlier in a pipeline"
             : PQerrorMessage(connectionPtr_.get());
-    LOG_ERROR << errmsg;
+    ErrorL << errmsg;
     auto exceptPtr = std::make_exception_ptr(Failure(errmsg));
     if (clearAll)
     {
@@ -583,7 +589,9 @@ void PgConnection::handleFatalError(bool clearAll, bool isAbortPipeline)
 
 void PgConnection::batchSql(std::deque<std::shared_ptr<SqlCmd>> &&sqlCommands)
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
+
     batchSqlCommands_ = std::move(sqlCommands);
     sendBatchedSql();
 }

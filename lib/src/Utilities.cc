@@ -13,8 +13,10 @@
  */
 
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <trantor/utils/Utilities.h>
+
+#include <cassert>
 #include <drogon/config.h>
 #ifdef USE_BROTLI
 #include <brotli/decode.h>
@@ -930,7 +932,7 @@ std::string gzipCompress(const char *data, const size_t ndata)
                          8,
                          Z_DEFAULT_STRATEGY) != Z_OK)
         {
-            LOG_ERROR << "deflateInit2 error!";
+            ErrorL << "deflateInit2 error!";
             return std::string{};
         }
         std::string outstr;
@@ -995,7 +997,7 @@ std::string gzipDecompress(const char *data, const size_t ndata)
     strm.zfree = Z_NULL;
     if (inflateInit2(&strm, (15 + 32)) != Z_OK)
     {
-        LOG_ERROR << "inflateInit2 error!";
+        ErrorL << "inflateInit2 error!";
         return std::string{};
     }
     while (!done)
@@ -1127,7 +1129,7 @@ trantor::Date getHttpDate(const std::string &httpFullDateString)
             return trantor::Date(epoch * trantor::Date::MICRO_SECONDS_PER_SEC);
         }
     }
-    LOG_WARN << "invalid datetime format: '" << httpFullDateString << "'";
+    WarnL << "invalid datetime format: '" << httpFullDateString << "'";
     return trantor::Date((std::numeric_limits<int64_t>::max)());
 }
 
@@ -1191,7 +1193,7 @@ int createPath(const std::string &path)
     std::filesystem::create_directories(fsPath, err);
     if (err)
     {
-        LOG_ERROR << "Error " << err.value() << " creating path " << osPath
+        ErrorL << "Error " << err.value() << " creating path " << fromNativePath(osPath)
                   << ": " << err.message();
         return -1;
     }
@@ -1260,14 +1262,14 @@ std::string brotliDecompress(const char *data, const size_t ndata)
 #else
 std::string brotliCompress(const char * /*data*/, const size_t /*ndata*/)
 {
-    LOG_ERROR << "If you do not have the brotli package installed, you cannot "
+    ErrorL << "If you do not have the brotli package installed, you cannot "
                  "use brotliCompress()";
     abort();
 }
 
 std::string brotliDecompress(const char * /*data*/, const size_t /*ndata*/)
 {
-    LOG_ERROR << "If you do not have the brotli package installed, you cannot "
+    ErrorL << "If you do not have the brotli package installed, you cannot "
                  "use brotliDecompress()";
     abort();
 }

@@ -73,13 +73,13 @@ void AccessLogger::initAndStart(const Json::Value &config)
     logFunctionMap_ = {{"$request_path", outputReqPath},
                        {"$path", outputReqPath},
                        {"$date",
-                        [this](trantor::LogStream &stream,
+                        [this](toolkit::LogContextCapture &stream,
                                const drogon::HttpRequestPtr &req,
                                const drogon::HttpResponsePtr &resp) {
                             outputDate(stream, req, resp);
                         }},
                        {"$request_date",
-                        [this](trantor::LogStream &stream,
+                        [this](toolkit::LogContextCapture &stream,
                                const drogon::HttpRequestPtr &req,
                                const drogon::HttpResponsePtr &resp) {
                             outputReqDate(stream, req, resp);
@@ -149,9 +149,15 @@ void AccessLogger::initAndStart(const Json::Value &config)
         }
         else
         {
-            LOG_ERROR << "path_exempt must be a string or string array!";
+            ErrorL << "path_exempt must be a string or string array!";
         }
     }
+
+    logger_ = std::make_shared<toolkit::Logger>("access");
+    logger_->setWriter(std::make_shared<toolkit::AsyncLogWriter>());
+    auto file_channel = std::make_shared<toolkit::FileChannel>("accessChannel", "./log/access/");
+    logger_->add(file_channel);
+    logger_->setLevel(toolkit::LInfo);
 
 #ifdef DROGON_SPDLOG_SUPPORT
     auto logWithSpdlog = trantor::Logger::hasSpdLogSupport() &&
@@ -176,13 +182,13 @@ void AccessLogger::initAndStart(const Json::Value &config)
                 if (!std::filesystem::create_directories(fsLogPath, fsErr) &&
                     fsErr)
                 {
-                    LOG_ERROR << "could not create log file path";
+                    ErrorL << "could not create log file path";
                     break;
                 }
                 // 2. check if we have rights to create files in the folder
                 if (os_access(fsLogPath.native().c_str(), W_OK) != 0)
                 {
-                    LOG_ERROR << "cannot create files in log folder";
+                    ErrorL << "cannot create files in log folder";
                     break;
                 }
                 std::filesystem::path fileName(
@@ -225,27 +231,28 @@ void AccessLogger::initAndStart(const Json::Value &config)
 #endif
         if (!logPath.empty())
     {
-        auto fileName = config.get("log_file", "access.log").asString();
-        auto extension = std::string(".log");
-        auto pos = fileName.rfind('.');
-        if (pos != std::string::npos)
-        {
-            extension = fileName.substr(pos);
-            fileName = fileName.substr(0, pos);
-        }
-        if (fileName.empty())
-        {
-            fileName = "access";
-        }
-        asyncFileLogger_.setFileName(fileName, extension, logPath);
-        asyncFileLogger_.startLogging();
+        auto fileName = config.get("log_file", "./log/access").asString();
+        // auto extension = std::string(".log");
+        // auto pos = fileName.rfind('.');
+        // if (pos != std::string::npos)
+        // {
+        //     extension = fileName.substr(pos);
+        //     fileName = fileName.substr(0, pos);
+        // }
+        // if (fileName.empty())
+        // {
+        //     fileName = "access";
+        // }
+        file_channel->setPath(fileName);
+        // asyncFileLogger_.setFileName(fileName, extension, logPath);
+        // asyncFileLogger_.startLogging();
         logIndex_ = config.get("log_index", 0).asInt();
-        trantor::Logger::setOutputFunction(
-            [&](const char *msg, const uint64_t len) {
-                asyncFileLogger_.output(msg, len);
-            },
-            [&]() { asyncFileLogger_.flush(); },
-            logIndex_);
+        // trantor::Logger::setOutputFunction(
+        //     [&](const char *msg, const uint64_t len) {
+        //         asyncFileLogger_.output(msg, len);
+        //     },
+        //     [&]() { asyncFileLogger_.flush(); },
+        //     logIndex_);
         auto sizeLimit = config.get("log_size_limit", 0).asUInt64();
         if (sizeLimit == 0)
         {
@@ -257,10 +264,12 @@ void AccessLogger::initAndStart(const Json::Value &config)
         }
         if (sizeLimit > 0)
         {
-            asyncFileLogger_.setFileSizeLimit(sizeLimit);
+            file_channel->setFileMaxSize(sizeLimit);
+            // asyncFileLogger_.setFileSizeLimit(sizeLimit);
         }
         auto maxFiles = config.get("max_files", 0).asUInt();
-        asyncFileLogger_.setMaxFiles(maxFiles);
+        // asyncFileLogger_.setMaxFiles(maxFiles);
+        file_channel->setFileMaxCount(maxFiles);
     }
     drogon::app().registerPreSendingAdvice(
         [this](const drogon::HttpRequestPtr &req,
@@ -269,12 +278,14 @@ void AccessLogger::initAndStart(const Json::Value &config)
             {
                 if (!std::regex_match(req->path(), exemptRegex_))
                 {
-                    logging(LOG_RAW_TO(logIndex_), req, resp);
+                    toolkit::LogContextCapture log(*logger_, toolkit::LInfo, "", "", 0);
+                    logging(log, req, resp);
                 }
             }
             else
             {
-                logging(LOG_RAW_TO(logIndex_), req, resp);
+                toolkit::LogContextCapture log(*logger_, toolkit::LInfo, "", "", 0);
+                logging(log, req, resp);
             }
         });
 }
@@ -283,7 +294,7 @@ void AccessLogger::shutdown()
 {
 }
 
-void AccessLogger::logging(trantor::LogStream &stream,
+void AccessLogger::logging(toolkit::LogContextCapture &stream,
                            const drogon::HttpRequestPtr &req,
                            const drogon::HttpResponsePtr &resp)
 {
@@ -298,7 +309,7 @@ void AccessLogger::createLogFunctions(std::string format)
     std::string rawString;
     while (!format.empty())
     {
-        LOG_TRACE << format;
+        TraceL << format;
         auto pos = format.find('$');
         if (pos != std::string::npos)
         {
@@ -312,7 +323,7 @@ void AccessLogger::createLogFunctions(std::string format)
                 if (!rawString.empty())
                 {
                     logFunctions_.emplace_back(
-                        [rawString](trantor::LogStream &stream,
+                        [rawString](toolkit::LogContextCapture &stream,
                                     const drogon::HttpRequestPtr &,
                                     const drogon::HttpResponsePtr &) {
                             stream << rawString;
@@ -339,7 +350,7 @@ void AccessLogger::createLogFunctions(std::string format)
     {
         logFunctions_.emplace_back(
             [rawString =
-                 std::move(rawString)](trantor::LogStream &stream,
+                 std::move(rawString)](toolkit::LogContextCapture &stream,
                                        const drogon::HttpRequestPtr &,
                                        const drogon::HttpResponsePtr &) {
                 stream << rawString << "\n";
@@ -348,7 +359,7 @@ void AccessLogger::createLogFunctions(std::string format)
     else
     {
         logFunctions_.emplace_back(
-            [](trantor::LogStream &stream,
+            [](toolkit::LogContextCapture &stream,
                const drogon::HttpRequestPtr &,
                const drogon::HttpResponsePtr &) { stream << "\n"; });
     }
@@ -366,7 +377,7 @@ AccessLogger::LogFunction AccessLogger::newLogFunction(
     {
         auto headerName = placeholder.substr(6);
         return [headerName =
-                    std::move(headerName)](trantor::LogStream &stream,
+                    std::move(headerName)](toolkit::LogContextCapture &stream,
                                            const drogon::HttpRequestPtr &req,
                                            const drogon::HttpResponsePtr &) {
             outputReqHeader(stream, req, headerName);
@@ -376,7 +387,7 @@ AccessLogger::LogFunction AccessLogger::newLogFunction(
     {
         auto cookieName = placeholder.substr(8);
         return [cookieName =
-                    std::move(cookieName)](trantor::LogStream &stream,
+                    std::move(cookieName)](toolkit::LogContextCapture &stream,
                                            const drogon::HttpRequestPtr &req,
                                            const drogon::HttpResponsePtr &) {
             outputReqCookie(stream, req, cookieName);
@@ -386,27 +397,27 @@ AccessLogger::LogFunction AccessLogger::newLogFunction(
     {
         auto headerName = placeholder.substr(15);
         return [headerName = std::move(
-                    headerName)](trantor::LogStream &stream,
+                    headerName)](toolkit::LogContextCapture &stream,
                                  const drogon::HttpRequestPtr &,
                                  const drogon::HttpResponsePtr &resp) {
             outputRespHeader(stream, resp, headerName);
         };
     }
-    return [placeholder](trantor::LogStream &stream,
+    return [placeholder](toolkit::LogContextCapture &stream,
                          const drogon::HttpRequestPtr &,
                          const drogon::HttpResponsePtr &) {
         stream << placeholder;
     };
 }
 
-void AccessLogger::outputReqPath(trantor::LogStream &stream,
+void AccessLogger::outputReqPath(toolkit::LogContextCapture &stream,
                                  const drogon::HttpRequestPtr &req,
                                  const drogon::HttpResponsePtr &)
 {
     stream << req->path();
 }
 
-void AccessLogger::outputDate(trantor::LogStream &stream,
+void AccessLogger::outputDate(toolkit::LogContextCapture &stream,
                               const drogon::HttpRequestPtr &,
                               const drogon::HttpResponsePtr &) const
 {
@@ -437,7 +448,7 @@ void AccessLogger::outputDate(trantor::LogStream &stream,
     }
 }
 
-void AccessLogger::outputReqDate(trantor::LogStream &stream,
+void AccessLogger::outputReqDate(toolkit::LogContextCapture &stream,
                                  const drogon::HttpRequestPtr &req,
                                  const drogon::HttpResponsePtr &) const
 {
@@ -469,7 +480,7 @@ void AccessLogger::outputReqDate(trantor::LogStream &stream,
 }
 
 //$request_query
-void AccessLogger::outputReqQuery(trantor::LogStream &stream,
+void AccessLogger::outputReqQuery(toolkit::LogContextCapture &stream,
                                   const drogon::HttpRequestPtr &req,
                                   const drogon::HttpResponsePtr &)
 {
@@ -477,7 +488,7 @@ void AccessLogger::outputReqQuery(trantor::LogStream &stream,
 }
 
 //$request_url
-void AccessLogger::outputReqURL(trantor::LogStream &stream,
+void AccessLogger::outputReqURL(toolkit::LogContextCapture &stream,
                                 const drogon::HttpRequestPtr &req,
                                 const drogon::HttpResponsePtr &)
 {
@@ -493,7 +504,7 @@ void AccessLogger::outputReqURL(trantor::LogStream &stream,
 }
 
 //$request_version
-void AccessLogger::outputVersion(trantor::LogStream &stream,
+void AccessLogger::outputVersion(toolkit::LogContextCapture &stream,
                                  const drogon::HttpRequestPtr &req,
                                  const drogon::HttpResponsePtr &)
 {
@@ -501,7 +512,7 @@ void AccessLogger::outputVersion(trantor::LogStream &stream,
 }
 
 //$request
-void AccessLogger::outputReqLine(trantor::LogStream &stream,
+void AccessLogger::outputReqLine(toolkit::LogContextCapture &stream,
                                  const drogon::HttpRequestPtr &req,
                                  const drogon::HttpResponsePtr &)
 {
@@ -518,7 +529,7 @@ void AccessLogger::outputReqLine(trantor::LogStream &stream,
     }
 }
 
-void AccessLogger::outputRemoteAddr(trantor::LogStream &stream,
+void AccessLogger::outputRemoteAddr(toolkit::LogContextCapture &stream,
                                     const drogon::HttpRequestPtr &req,
                                     const drogon::HttpResponsePtr &)
 {
@@ -532,35 +543,35 @@ void AccessLogger::outputRemoteAddr(trantor::LogStream &stream,
     }
 }
 
-void AccessLogger::outputLocalAddr(trantor::LogStream &stream,
+void AccessLogger::outputLocalAddr(toolkit::LogContextCapture &stream,
                                    const drogon::HttpRequestPtr &req,
                                    const drogon::HttpResponsePtr &)
 {
     stream << req->localAddr().toIpPort();
 }
 
-void AccessLogger::outputReqLength(trantor::LogStream &stream,
+void AccessLogger::outputReqLength(toolkit::LogContextCapture &stream,
                                    const drogon::HttpRequestPtr &req,
                                    const drogon::HttpResponsePtr &)
 {
     stream << req->body().length();
 }
 
-void AccessLogger::outputRespLength(trantor::LogStream &stream,
+void AccessLogger::outputRespLength(toolkit::LogContextCapture &stream,
                                     const drogon::HttpRequestPtr &,
                                     const drogon::HttpResponsePtr &resp)
 {
     stream << resp->body().length();
 }
 
-void AccessLogger::outputMethod(trantor::LogStream &stream,
+void AccessLogger::outputMethod(toolkit::LogContextCapture &stream,
                                 const drogon::HttpRequestPtr &req,
                                 const drogon::HttpResponsePtr &)
 {
     stream << req->methodString();
 }
 
-void AccessLogger::outputThreadNumber(trantor::LogStream &stream,
+void AccessLogger::outputThreadNumber(toolkit::LogContextCapture &stream,
                                       const drogon::HttpRequestPtr &,
                                       const drogon::HttpResponsePtr &)
 {
@@ -599,7 +610,7 @@ void AccessLogger::outputThreadNumber(trantor::LogStream &stream,
 }
 
 //$http_[header_name]
-void AccessLogger::outputReqHeader(trantor::LogStream &stream,
+void AccessLogger::outputReqHeader(toolkit::LogContextCapture &stream,
                                    const drogon::HttpRequestPtr &req,
                                    const std::string &headerName)
 {
@@ -607,7 +618,7 @@ void AccessLogger::outputReqHeader(trantor::LogStream &stream,
 }
 
 //$cookie_[cookie_name]
-void AccessLogger::outputReqCookie(trantor::LogStream &stream,
+void AccessLogger::outputReqCookie(toolkit::LogContextCapture &stream,
                                    const drogon::HttpRequestPtr &req,
                                    const std::string &cookie)
 {
@@ -615,7 +626,7 @@ void AccessLogger::outputReqCookie(trantor::LogStream &stream,
 }
 
 //$upstream_http_[header_name]
-void AccessLogger::outputRespHeader(trantor::LogStream &stream,
+void AccessLogger::outputRespHeader(toolkit::LogContextCapture &stream,
                                     const drogon::HttpResponsePtr &resp,
                                     const std::string &headerName)
 {
@@ -623,7 +634,7 @@ void AccessLogger::outputRespHeader(trantor::LogStream &stream,
 }
 
 //$status
-void AccessLogger::outputStatusString(trantor::LogStream &stream,
+void AccessLogger::outputStatusString(toolkit::LogContextCapture &stream,
                                       const drogon::HttpRequestPtr &,
                                       const drogon::HttpResponsePtr &resp)
 {
@@ -632,7 +643,7 @@ void AccessLogger::outputStatusString(trantor::LogStream &stream,
 }
 
 //$status_code
-void AccessLogger::outputStatusCode(trantor::LogStream &stream,
+void AccessLogger::outputStatusCode(toolkit::LogContextCapture &stream,
                                     const drogon::HttpRequestPtr &,
                                     const drogon::HttpResponsePtr &resp)
 {
@@ -640,7 +651,7 @@ void AccessLogger::outputStatusCode(trantor::LogStream &stream,
 }
 
 //$processing_time
-void AccessLogger::outputProcessingTime(trantor::LogStream &stream,
+void AccessLogger::outputProcessingTime(toolkit::LogContextCapture &stream,
                                         const drogon::HttpRequestPtr &req,
                                         const drogon::HttpResponsePtr &)
 {
@@ -653,7 +664,7 @@ void AccessLogger::outputProcessingTime(trantor::LogStream &stream,
 }
 
 //$upstream_http_content-type $upstream_http_content_type
-void AccessLogger::outputRespContentType(trantor::LogStream &stream,
+void AccessLogger::outputRespContentType(toolkit::LogContextCapture &stream,
                                          const drogon::HttpRequestPtr &,
                                          const drogon::HttpResponsePtr &resp)
 {

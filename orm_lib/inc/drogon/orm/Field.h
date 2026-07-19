@@ -22,7 +22,7 @@
 #include <drogon/orm/ArrayParser.h>
 #include <drogon/orm/Result.h>
 #include <drogon/orm/Row.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -100,7 +100,7 @@ class DROGON_EXPORT Field
             }
             catch (...)
             {
-                LOG_DEBUG << "Type error";
+                DebugL << "Type error";
             }
         }
         return value;

@@ -15,7 +15,7 @@
 
 #include <drogon/exports.h>
 #include <trantor/utils/Date.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <drogon/utils/Utilities.h>
 #include <cctype>
 #include <string>
@@ -383,7 +383,7 @@ class DROGON_EXPORT Cookie
             return Cookie::SameSite::kNone;
         if (!stricmp(sameSite, "null"))
         {
-            LOG_WARN
+            WarnL
                 << "'" << sameSite
                 << "' is not a valid SameSite policy. 'Null', 'Lax', 'Strict' "
                    "or "

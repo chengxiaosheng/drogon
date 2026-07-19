@@ -3,7 +3,7 @@
 #include <functional>
 #include <mutex>
 #include <unordered_map>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <trantor/net/callbacks.h>
 #include <trantor/net/TcpConnection.h>
 
@@ -25,7 +25,7 @@ int main()
             {
                 std::lock_guard lk(mutex);
                 connMapping.emplace(std::move(connPtr), [] {
-                    LOG_INFO << "call stop or other options!!!!";
+                    InfoL << "call stop or other options!!!!";
                 });
             }
             auto resp = drogon::HttpResponse::newAsyncStreamResponse(
@@ -54,7 +54,7 @@ int main()
            std::function<void(const HttpResponsePtr &)> &&callback) {
             if (!stream)
             {
-                LOG_INFO << "stream mode is not enabled";
+                InfoL << "stream mode is not enabled";
                 auto resp = HttpResponse::newHttpResponse();
                 resp->setStatusCode(k400BadRequest);
                 resp->setBody("no stream");
@@ -64,7 +64,7 @@ int main()
 
             auto reader = RequestStreamReader::newReader(
                 [](const char *data, size_t length) {
-                    LOG_INFO << "piece[" << length
+                    InfoL << "piece[" << length
                              << "]: " << std::string_view{data, length};
                 },
                 [callback = std::move(callback)](std::exception_ptr ex) {
@@ -77,7 +77,7 @@ int main()
                         }
                         catch (const std::exception &e)
                         {
-                            LOG_ERROR << "stream error: " << e.what();
+                            ErrorL << "stream error: " << e.what();
                         }
                         resp->setStatusCode(k400BadRequest);
                         resp->setBody("error\n");
@@ -85,7 +85,7 @@ int main()
                     }
                     else
                     {
-                        LOG_INFO << "stream finish";
+                        InfoL << "stream finish";
                         resp->setBody("success\n");
                         callback(resp);
                     }
@@ -95,7 +95,7 @@ int main()
         },
         {Post});
 
-    LOG_INFO << "Server running on 127.0.0.1:8848";
+    InfoL << "Server running on 127.0.0.1:8848";
     app().enableRequestStream();  // This is for request stream.
     app().setConnectionCallback([](const trantor::TcpConnectionPtr &conn) {
         if (conn->disconnected())
@@ -103,7 +103,7 @@ int main()
             std::lock_guard lk(mutex);
             if (auto it = connMapping.find(conn); it != connMapping.end())
             {
-                LOG_INFO << "disconnect";
+                InfoL << "disconnect";
                 connMapping[conn]();
                 connMapping.erase(conn);
             }

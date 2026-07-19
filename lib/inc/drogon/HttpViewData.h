@@ -15,7 +15,7 @@
 #pragma once
 
 #include <drogon/exports.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <trantor/utils/MsgBuffer.h>
 #include <sstream>
 #include <string>
@@ -47,7 +47,7 @@ class DROGON_EXPORT HttpViewData
             }
             else
             {
-                LOG_ERROR << "Bad type";
+                ErrorL << "Bad type";
             }
         }
         return nullVal;

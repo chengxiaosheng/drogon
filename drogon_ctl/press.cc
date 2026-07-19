@@ -342,17 +342,17 @@ void press::doTesting()
     {
         sendRequest(client);
     }
-    loopPool_->wait();
+    // loopPool_->wait();
 }
 
 void press::createRequestAndClients()
 {
-    loopPool_ = std::make_unique<trantor::EventLoopThreadPool>(numOfThreads_);
-    loopPool_->start();
+    // loopPool_ = std::make_unique<trantor::EventLoopThreadPool>(numOfThreads_);
+    // loopPool_->start();
     for (size_t i = 0; i < numOfConnections_; ++i)
     {
         auto client = HttpClient::newHttpClient(host_,
-                                                loopPool_->getNextLoop(),
+                                                toolkit::EventPollerPool::Instance()[i],
                                                 false,
                                                 certValidation_);
         client->enableCookies();
@@ -412,8 +412,9 @@ void press::sendRequest(const HttpClientPtr &client)
                 sendRequest(client);
             else
             {
-                client->getLoop()->runAfter(1, [this, client]() {
+                client->getLoop()->doDelayTask(1 * 1000, [this, client]() {
                     sendRequest(client);
+                    return 0;
                 });
             }
 

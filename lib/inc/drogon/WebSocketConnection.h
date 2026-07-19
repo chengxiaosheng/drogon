@@ -20,7 +20,7 @@
 #include <drogon/HttpTypes.h>
 #include <string_view>
 #include <trantor/net/InetAddress.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 
 namespace drogon
 {

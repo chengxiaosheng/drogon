@@ -17,8 +17,8 @@
 #include <drogon/nosql/RedisClient.h>
 #include <drogon/HttpAppFramework.h>
 #include <drogon/IOThreadStorage.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoop.h>
+#include <Util/util.h>
+#include <Poller/EventPoller.h>
 #include <string>
 #include <memory>
 
@@ -26,10 +26,10 @@ namespace drogon
 {
 namespace nosql
 {
-class RedisClientManager : public trantor::NonCopyable
+class RedisClientManager : public toolkit::noncopyable
 {
   public:
-    void createRedisClients(const std::vector<trantor::EventLoop *> &ioLoops);
+    void createRedisClients();
 
     RedisClientPtr getRedisClient(const std::string &name)
     {

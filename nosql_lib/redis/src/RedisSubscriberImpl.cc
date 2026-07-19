@@ -23,7 +23,7 @@ RedisSubscriberImpl::~RedisSubscriberImpl()
     if (conn_)
     {
         conn.swap(conn_);
-        conn->getLoop()->runInLoop([conn]() {
+        conn->getLoop()->async([conn]() {
             // Run in self loop to avoid blocking
             conn->disconnect();
         });
@@ -34,7 +34,7 @@ void RedisSubscriberImpl::subscribe(
     const std::string &channel,
     RedisMessageCallback &&messageCallback) noexcept
 {
-    LOG_TRACE << "Subscribe " << channel;
+    TraceL << "Subscribe " << channel;
 
     std::shared_ptr<SubscribeContext> subCtx;
     {
@@ -63,7 +63,7 @@ void RedisSubscriberImpl::subscribe(
     }
     else
     {
-        LOG_TRACE << "no subscribe connection available, wait for connection";
+        TraceL << "no subscribe connection available, wait for connection";
         // Just wait for connection, all channels will be re-sub
     }
 }
@@ -72,7 +72,7 @@ void RedisSubscriberImpl::psubscribe(
     const std::string &pattern,
     RedisMessageCallback &&messageCallback) noexcept
 {
-    LOG_TRACE << "Psubscribe " << pattern;
+    TraceL << "Psubscribe " << pattern;
 
     std::shared_ptr<SubscribeContext> subCtx;
     {
@@ -102,14 +102,14 @@ void RedisSubscriberImpl::psubscribe(
     }
     else
     {
-        LOG_TRACE << "no subscribe connection available, wait for connection";
+        TraceL << "no subscribe connection available, wait for connection";
         // Just wait for connection, all channels will be re-sub
     }
 }
 
 void RedisSubscriberImpl::unsubscribe(const std::string &channel) noexcept
 {
-    LOG_TRACE << "Unsubscribe " << channel;
+    TraceL << "Unsubscribe " << channel;
 
     std::shared_ptr<SubscribeContext> subCtx;
     {
@@ -117,7 +117,7 @@ void RedisSubscriberImpl::unsubscribe(const std::string &channel) noexcept
         auto iter = subContexts_.find(channel);
         if (iter == subContexts_.end())
         {
-            LOG_DEBUG << "Attempt to unsubscribe from unknown channel "
+            DebugL << "Attempt to unsubscribe from unknown channel "
                       << channel;
             return;
         }
@@ -133,7 +133,7 @@ void RedisSubscriberImpl::unsubscribe(const std::string &channel) noexcept
     }
     if (!connPtr)
     {
-        LOG_TRACE << "Connection unavailable, no need to send unsub command";
+        TraceL << "Connection unavailable, no need to send unsub command";
         return;
     }
 
@@ -142,7 +142,7 @@ void RedisSubscriberImpl::unsubscribe(const std::string &channel) noexcept
 
 void RedisSubscriberImpl::punsubscribe(const std::string &pattern) noexcept
 {
-    LOG_TRACE << "Punsubscribe " << pattern;
+    TraceL << "Punsubscribe " << pattern;
 
     std::shared_ptr<SubscribeContext> subCtx;
     {
@@ -150,7 +150,7 @@ void RedisSubscriberImpl::punsubscribe(const std::string &pattern) noexcept
         auto iter = psubContexts_.find(pattern);
         if (iter == psubContexts_.end())
         {
-            LOG_DEBUG << "Attempt to punsubscribe from unknown pattern "
+            DebugL << "Attempt to punsubscribe from unknown pattern "
                       << pattern;
             return;
         }
@@ -166,7 +166,7 @@ void RedisSubscriberImpl::punsubscribe(const std::string &pattern) noexcept
     }
     if (!connPtr)
     {
-        LOG_TRACE << "Connection unavailable, no need to send unsub command";
+        TraceL << "Connection unavailable, no need to send unsub command";
         return;
     }
 

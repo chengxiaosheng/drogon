@@ -22,10 +22,10 @@ void WsClient::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
 
     if (type != WebSocketMessageType::Text)
     {
-        LOG_ERROR << "Unsupported message type " << (int)type;
+        ErrorL << "Unsupported message type " << (int)type;
         return;
     }
-    LOG_DEBUG << "WsClient new message from "
+    DebugL << "WsClient new message from "
               << wsConnPtr->peerAddr().toIpPort();
 
     auto context = wsConnPtr->getContext<ClientContext>();
@@ -40,18 +40,18 @@ void WsClient::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
 
         std::string channel = message.substr(0, pos);
         std::string msg = message.substr(pos + 1);
-        LOG_INFO << "PUBLISH " << channel << " " << msg;
+        InfoL << "PUBLISH " << channel << " " << msg;
 
         // Publisher
         drogon::app().getRedisClient()->execCommandAsync(
             [wsConnPtr](const nosql::RedisResult &result) {
                 std::string nSubs = std::to_string(result.asInteger());
-                LOG_INFO << "PUBLISH success to " << nSubs << " subscribers.";
+                InfoL << "PUBLISH success to " << nSubs << " subscribers.";
                 wsConnPtr->send("PUBLISH success to " + nSubs +
                                 " subscribers.");
             },
             [wsConnPtr](const nosql::RedisException &ex) {
-                LOG_INFO << "PUBLISH failed, " << ex.what();
+                InfoL << "PUBLISH failed, " << ex.what();
                 wsConnPtr->send(std::string("PUBLISH failed: ") + ex.what());
             },
             "PUBLISH %s %s",
@@ -87,7 +87,7 @@ void WsClient::handleNewMessage(const WebSocketConnectionPtr &wsConnPtr,
             [channel, wsConnPtr](const std::string &subChannel,
                                  const std::string &subMessage) {
                 assert(subChannel == channel);
-                LOG_INFO << "Receive channel message " << subMessage;
+                InfoL << "Receive channel message " << subMessage;
                 std::string resp = "{\"channel\":\"" + subChannel +
                                    "\",\"message\":\"" + subMessage + "\"}";
                 wsConnPtr->send(resp);
@@ -114,7 +114,7 @@ void WsClient::handleNewConnection(const HttpRequestPtr &req,
 {
     if (req->getPath() == "/sub")
     {
-        LOG_DEBUG << "WsClient new subscriber connection from "
+        DebugL << "WsClient new subscriber connection from "
                   << wsConnPtr->peerAddr().toIpPort();
         std::shared_ptr<ClientContext> context =
             std::make_shared<ClientContext>();
@@ -123,14 +123,14 @@ void WsClient::handleNewConnection(const HttpRequestPtr &req,
     }
     else
     {
-        LOG_DEBUG << "WsClient new publisher connection from "
+        DebugL << "WsClient new publisher connection from "
                   << wsConnPtr->peerAddr().toIpPort();
     }
 }
 
 void WsClient::handleConnectionClosed(const WebSocketConnectionPtr &wsConnPtr)
 {
-    LOG_DEBUG << "WsClient close connection from "
+    DebugL << "WsClient close connection from "
               << wsConnPtr->peerAddr().toIpPort();
     // Channels will be auto unsubscribed when subscriber destructed.
     // auto context = wsConnPtr->getContext<ClientContext>();

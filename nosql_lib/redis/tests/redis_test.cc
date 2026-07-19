@@ -137,7 +137,7 @@ DROGON_TEST(RedisTest)
     }
     catch (const RedisException &err)
     {
-        LOG_INFO << "Successfully catch sync error: " << err.what();
+        InfoL << "Successfully catch sync error: " << err.what();
         MANDATE(err.code() == RedisErrorCode::kRedisError);
         SUCCESS();
     }
@@ -186,7 +186,7 @@ DROGON_TEST(RedisTest)
 int main(int argc, char **argv)
 {
 #ifndef USE_REDIS
-    LOG_DEBUG << "Drogon is built without Redis. No tests executed.";
+    DebugL << "Drogon is built without Redis. No tests executed.";
     return 0;
 #endif
     std::promise<void> p1;

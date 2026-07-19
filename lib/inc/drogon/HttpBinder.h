@@ -95,7 +95,7 @@ T getHandlerArgumentValue(std::string &&p)
     }
     else
     {
-        LOG_ERROR << "Can't convert string to type " << typeid(T).name();
+        ErrorL << "Can't convert string to type " << typeid(T).name();
         return T();
     }
 }
@@ -252,12 +252,12 @@ class HttpBinder : public HttpBinderBase
             {
                 auto objPtr = DrClassMap::getSingleInstance<
                     typename traits::class_type>();
-                LOG_TRACE << "create handler class object: " << objPtr.get();
+                TraceL << "create handler class object: " << objPtr.get();
             }
             else
             {
                 auto &obj = getControllerObj<typename traits::class_type>();
-                LOG_TRACE << "create handler class object: " << &obj;
+                TraceL << "create handler class object: " << &obj;
             }
         }
     }
@@ -332,7 +332,7 @@ class HttpBinder : public HttpBinderBase
                 }
                 catch (...)
                 {
-                    LOG_ERROR << "Exception not derived from std::exception";
+                    ErrorL << "Exception not derived from std::exception";
                     return;
                 }
             }
@@ -369,7 +369,7 @@ class HttpBinder : public HttpBinderBase
                 }
                 catch (...)
                 {
-                    LOG_ERROR << "Exception not derived from std::exception";
+                    ErrorL << "Exception not derived from std::exception";
                     return;
                 }
             }
@@ -416,7 +416,7 @@ class HttpBinder : public HttpBinderBase
                     }
                     catch (...)
                     {
-                        LOG_ERROR
+                        ErrorL
                             << "Exception not derived from std::exception";
                     }
                     co_return;

@@ -17,7 +17,7 @@
 #include <drogon/DrObject.h>
 #include <drogon/utils/HttpConstraint.h>
 #include <drogon/HttpAppFramework.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -78,7 +78,7 @@ class HttpSimpleController : public DrObject<T>, public HttpSimpleControllerBase
         const std::string &path,
         const std::vector<internal::HttpConstraint> &constraints)
     {
-        LOG_TRACE << "register simple controller("
+        TraceL << "register simple controller("
                   << HttpSimpleController<T, AutoCreation>::classTypeName()
                   << ") on path:" << path;
         app().registerHttpSimpleController(

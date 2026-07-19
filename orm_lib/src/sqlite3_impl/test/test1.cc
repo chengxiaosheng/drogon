@@ -2,7 +2,7 @@
 #include <drogon/drogon.h>
 #include <drogon/orm/DbClient.h>
 #include <iostream>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -18,10 +18,10 @@ int main()
     auto clientPtr = DbClient::newSqlite3Client("filename=test.db", 1);
     std::this_thread::sleep_for(1s);
 
-    LOG_DEBUG << "start!";
+    DebugL << "start!";
     // *clientPtr << "Drop table groups;" << Mode::Blocking >>
     //     [](const Result &r) {
-    //         LOG_DEBUG << "dropped";
+    //         DebugL << "dropped";
     //     } >>
     //     [](const DrogonDbException &e) {
     //         std::cout << e.base().what() << std::endl;
@@ -37,15 +37,15 @@ int main()
                   "AVATAR_ID TEXT, uuu double, text VARCHAR(255),avatar "
                   "blob,is_default bool)"
                << Mode::Blocking >>
-        [](const Result &r) { LOG_DEBUG << "created"; } >>
+        [](const Result &r) { DebugL << "created"; } >>
         [](const DrogonDbException &e) {
             std::cout << e.base().what() << std::endl;
         };
     *clientPtr << "insert into GROUPS (group_name) values(?)"
                << "test_group" << Mode::Blocking >>
         [](const Result &r) {
-            LOG_DEBUG << "inserted:" << r.affectedRows();
-            LOG_DEBUG << "id:" << r.insertId();
+            DebugL << "inserted:" << r.affectedRows();
+            DebugL << "id:" << r.insertId();
         } >>
         [](const DrogonDbException &e) {
             std::cout << e.base().what() << std::endl;
@@ -53,26 +53,26 @@ int main()
     *clientPtr << "insert into GROUPS (group_name) values(?)"
                << "test_group" << Mode::Blocking >>
         [](const Result &r) {
-            LOG_DEBUG << "inserted:" << r.affectedRows();
-            LOG_DEBUG << "id:" << r.insertId();
+            DebugL << "inserted:" << r.affectedRows();
+            DebugL << "id:" << r.insertId();
         } >>
         [](const DrogonDbException &e) {
             std::cout << e.base().what() << std::endl;
         };
     *clientPtr << "select * from GROUPS " >> [](const Result &r) {
-        LOG_DEBUG << "affected rows:" << r.affectedRows();
-        LOG_DEBUG << "select " << r.size() << " rows";
-        LOG_DEBUG << "id:" << r.insertId();
+        DebugL << "affected rows:" << r.affectedRows();
+        DebugL << "select " << r.size() << " rows";
+        DebugL << "id:" << r.insertId();
         for (auto const &row : r)
         {
-            LOG_DEBUG << "group_id:" << row["group_id"].as<size_t>();
+            DebugL << "group_id:" << row["group_id"].as<size_t>();
         }
     } >> [](const DrogonDbException &e) {
         std::cout << e.base().what() << std::endl;
     };
     {
         auto trans = clientPtr->newTransaction([](bool success) {
-            LOG_DEBUG << (success ? "commit success!" : "commit failed!");
+            DebugL << (success ? "commit success!" : "commit failed!");
         });
         Mapper<drogon_model::sqlite3::Groups> mapper(trans);
         mapper.limit(2).offset(1).findAll(
@@ -80,7 +80,7 @@ int main()
                 Mapper<drogon_model::sqlite3::Groups> mapper(trans);
                 for (auto group : v)
                 {
-                    LOG_DEBUG << "group_id=" << group.getValueOfGroupId();
+                    DebugL << "group_id=" << group.getValueOfGroupId();
                     std::cout << group.toJson() << std::endl;
                     std::cout << "avatar:" << group.getValueOfAvatarAsString()
                               << std::endl;
@@ -88,14 +88,14 @@ int main()
                     mapper.update(
                         group,
                         [](const size_t count) {
-                            LOG_DEBUG << "update " << count << " rows";
+                            DebugL << "update " << count << " rows";
                         },
                         [](const DrogonDbException &e) {
-                            LOG_ERROR << e.base().what();
+                            ErrorL << e.base().what();
                         });
                 }
             },
-            [](const DrogonDbException &e) { LOG_ERROR << e.base().what(); });
+            [](const DrogonDbException &e) { ErrorL << e.base().what(); });
         drogon_model::sqlite3::Groups group;
         group.setAvatar("hahahaha,xixixixix");
         try

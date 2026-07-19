@@ -14,7 +14,7 @@
 
 #include <drogon/config.h>
 #include <drogon/orm/DbListener.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <mutex>
 
 #if USE_POSTGRESQL
@@ -28,7 +28,7 @@ DbListener::~DbListener() = default;
 
 std::shared_ptr<DbListener> DbListener::newPgListener(
     const std::string &connInfo,
-    trantor::EventLoop *loop)
+    const std::shared_ptr<toolkit::EventPoller> &loop)
 {
 #if USE_POSTGRESQL
     std::shared_ptr<PgListener> pgListener =
@@ -36,7 +36,7 @@ std::shared_ptr<DbListener> DbListener::newPgListener(
     pgListener->init();
     return pgListener;
 #else
-    LOG_ERROR << "Postgresql is not supported by current drogon build";
+    ErrorL << "Postgresql is not supported by current drogon build";
     return nullptr;
 #endif
 }

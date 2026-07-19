@@ -16,7 +16,6 @@
 #include <thread>
 #include <iostream>
 #include <string_view>
-#include <trantor/utils/LogStream.h>
 #include <drogon/utils/Utilities.h>
 
 namespace drogon
@@ -260,7 +259,7 @@ inline std::ostream &operator<<(std::ostream &out, drogon::ReqResult result)
     return out << to_string_view(result);
 }
 
-inline trantor::LogStream &operator<<(trantor::LogStream &out,
+inline toolkit::LogContextCapture &operator<<(toolkit::LogContextCapture &out,
                                       drogon::ReqResult result)
 {
     return out << to_string_view(result);

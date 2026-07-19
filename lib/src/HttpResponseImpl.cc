@@ -24,7 +24,7 @@
 #include <cstdio>
 #include <string>
 #include <sys/stat.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 using namespace trantor;
 using namespace drogon;
@@ -143,7 +143,7 @@ void HttpResponseImpl::generateBodyFromJson() const
 
 HttpResponsePtr HttpResponse::newNotFoundResponse(const HttpRequestPtr &req)
 {
-    auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
+    auto loop = toolkit::EventPollerPool::Instance().getPoller();// trantor::EventLoop::getEventLoopOfCurrentThread();
     auto &resp = HttpAppFrameworkImpl::instance().getCustom404Page();
     if (resp)
     {
@@ -179,7 +179,7 @@ HttpResponsePtr HttpResponse::newNotFoundResponse(const HttpRequestPtr &req)
                     resp->setExpiredTime(0);
                 });
             });
-            LOG_TRACE << "Use cached 404 response";
+            TraceL << "Use cached 404 response";
             return thread404Pages.getThreadData();
         }
         else
@@ -289,7 +289,7 @@ HttpResponsePtr HttpResponse::newFileResponse(
     const HttpRequestPtr &req)
 {
     std::ifstream infile(utils::toNativePath(fullPath), std::ifstream::binary);
-    LOG_TRACE << "send http file:" << fullPath << " offset " << offset
+    TraceL << "send http file:" << fullPath << " offset " << offset
               << " length " << length;
     if (!infile)
     {
@@ -412,7 +412,7 @@ HttpResponsePtr HttpResponse::newStreamResponse(
     const std::string &typeString,
     const HttpRequestPtr &req)
 {
-    LOG_TRACE << "send stream as "s
+    TraceL << "send stream as "s
               << (attachmentFileName.empty() ? "raw data"s
                                              : "file: "s + attachmentFileName);
     if (!callback)
@@ -742,7 +742,7 @@ void HttpResponseImpl::makeHeaderString(trantor::MsgBuffer &buffer)
                 !sendfileName_.empty() || streamCallback_ ||
                 asyncStreamCallback_)
             {
-                LOG_ERROR << "The body should be empty when the content-length "
+                ErrorL << "The body should be empty when the content-length "
                              "is not allowed!";
             }
         }
@@ -753,7 +753,7 @@ void HttpResponseImpl::makeHeaderString(trantor::MsgBuffer &buffer)
             if (version_ != Version::kHttp10 &&
                 headers_.find("content-length") == headers_.end())
             {
-                LOG_DEBUG << "send stream with transfer-encoding chunked";
+                DebugL << "send stream with transfer-encoding chunked";
                 headers_["transfer-encoding"] = "chunked";
             }
             len = 0;
@@ -923,7 +923,7 @@ std::shared_ptr<trantor::MsgBuffer> HttpResponseImpl::renderToBuffer()
         httpString->append("\r\n");
     }
 
-    LOG_TRACE << "response(no body):"
+    TraceL << "response(no body):"
               << std::string_view{httpString->peek(),
                                   httpString->readableBytes()};
     if (bodyPtr_)
@@ -997,7 +997,7 @@ void HttpResponseImpl::addHeader(const char *start,
 
     if (field == "set-cookie")
     {
-        // LOG_INFO<<"cookies!!!:"<<value;
+        // InfoL<<"cookies!!!:"<<value;
         auto values = utils::splitString(value, ";");
         Cookie cookie;
         cookie.setHttpOnly(false);
@@ -1115,7 +1115,7 @@ void HttpResponseImpl::clear()
     sendfileName_.clear();
     if (streamCallback_)
     {
-        LOG_TRACE << "Cleanup HttpResponse stream callback";
+        TraceL << "Cleanup HttpResponse stream callback";
         streamCallback_(nullptr, 0);  // callback internal cleanup
         streamCallback_ = {};
     }
@@ -1153,8 +1153,8 @@ void HttpResponseImpl::parseJson() const
                            jsonPtr_.get(),
                            &errs))
         {
-            LOG_ERROR << errs;
-            LOG_ERROR << "body: " << bodyPtr_->getString();
+            ErrorL << errs;
+            ErrorL << "body: " << bodyPtr_->getString();
             jsonPtr_.reset();
             jsonParsingErrorPtr_ =
                 std::make_shared<std::string>(std::move(errs));

@@ -17,9 +17,9 @@
 #include <drogon/nosql/RedisException.h>
 #include <drogon/nosql/RedisResult.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <trantor/net/InetAddress.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/Channel.h>
 #include <hiredis/async.h>
 #include <hiredis/hiredis.h>
@@ -40,7 +40,7 @@ enum class ConnectStatus
     kEnd
 };
 
-class RedisConnection : public trantor::NonCopyable,
+class RedisConnection : public toolkit::noncopyable,
                         public std::enable_shared_from_this<RedisConnection>
 {
   public:
@@ -48,7 +48,7 @@ class RedisConnection : public trantor::NonCopyable,
                     const std::string &username,
                     const std::string &password,
                     unsigned int db,
-                    trantor::EventLoop *loop);
+                    const std::shared_ptr<toolkit::EventPoller> &loop);
 
     void setConnectCallback(
         const std::function<void(std::shared_ptr<RedisConnection> &&)>
@@ -100,7 +100,7 @@ class RedisConnection : public trantor::NonCopyable,
                               RedisResultCallback &&resultCallback,
                               RedisExceptionCallback &&exceptionCallback)
     {
-        if (loop_->isInLoopThread())
+        if (loop_->isCurrentThread())
         {
             sendCommandInLoop(command,
                               std::move(resultCallback),
@@ -108,7 +108,7 @@ class RedisConnection : public trantor::NonCopyable,
         }
         else
         {
-            loop_->queueInLoop(
+            loop_->async(
                 [this,
                  callback = std::move(resultCallback),
                  exceptionCallback = std::move(exceptionCallback),
@@ -125,11 +125,11 @@ class RedisConnection : public trantor::NonCopyable,
                       RedisExceptionCallback &&exceptionCallback,
                       va_list ap)
     {
-        LOG_TRACE << "redis command: " << command;
+        TraceL << "redis command: " << command;
         try
         {
             auto fullCommand = getFormattedCommand(command, ap);
-            if (loop_->isInLoopThread())
+            if (loop_->isCurrentThread())
             {
                 sendCommandInLoop(fullCommand,
                                   std::move(resultCallback),
@@ -137,7 +137,7 @@ class RedisConnection : public trantor::NonCopyable,
             }
             else
             {
-                loop_->queueInLoop(
+                loop_->async(
                     [this,
                      callback = std::move(resultCallback),
                      exceptionCallback = std::move(exceptionCallback),
@@ -159,7 +159,7 @@ class RedisConnection : public trantor::NonCopyable,
 
     ~RedisConnection()
     {
-        LOG_TRACE << (int)status_;
+        TraceL << (int)status_;
         if (redisContext_ && status_ != ConnectStatus::kEnd)
             redisAsyncDisconnect(redisContext_);
     }
@@ -180,7 +180,7 @@ class RedisConnection : public trantor::NonCopyable,
         va_end(args);
     }
 
-    trantor::EventLoop *getLoop() const
+    std::shared_ptr<toolkit::EventPoller> getLoop() const
     {
         return loop_;
     }
@@ -191,7 +191,7 @@ class RedisConnection : public trantor::NonCopyable,
     const std::string username_;
     const std::string password_;
     const unsigned int db_;
-    trantor::EventLoop *loop_{nullptr};
+    std::shared_ptr<toolkit::EventPoller> loop_{nullptr};
     std::unique_ptr<trantor::Channel> channel_{nullptr};
     std::function<void(std::shared_ptr<RedisConnection> &&)> connectCallback_;
     std::function<void(std::shared_ptr<RedisConnection> &&)>

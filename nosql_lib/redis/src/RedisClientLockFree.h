@@ -16,8 +16,7 @@
 #include "RedisConnection.h"
 #include "RedisSubscriberImpl.h"
 #include <drogon/nosql/RedisClient.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoopThreadPool.h>
+#include <Util/util.h>
 #include <vector>
 #include <unordered_set>
 #include <list>
@@ -32,13 +31,13 @@ using RedisConnectionPtr = std::shared_ptr<RedisConnection>;
 
 class RedisClientLockFree final
     : public RedisClient,
-      public trantor::NonCopyable,
+      public toolkit::noncopyable,
       public std::enable_shared_from_this<RedisClientLockFree>
 {
   public:
     RedisClientLockFree(const trantor::InetAddress &serverAddress,
                         size_t numberOfConnections,
-                        trantor::EventLoop *loop,
+                        const std::shared_ptr<toolkit::EventPoller> &loop,
                         std::string username = "",
                         std::string password = "",
                         unsigned int db = 0);
@@ -51,7 +50,7 @@ class RedisClientLockFree final
 
     RedisTransactionPtr newTransaction() override
     {
-        LOG_ERROR
+        ErrorL
             << "You can't use the synchronous interface in the fast redis "
                "client, please use the asynchronous version "
                "(newTransactionAsync)";
@@ -71,7 +70,7 @@ class RedisClientLockFree final
     void closeAll() override;
 
   private:
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     std::unordered_set<RedisConnectionPtr> connections_;
     std::vector<RedisConnectionPtr> readyConnections_;
     size_t connectionPos_{0};

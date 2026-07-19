@@ -195,7 +195,7 @@ void doTest(const HttpClientPtr &client, std::shared_ptr<test::Case> TEST_CTX)
                                         const HttpResponsePtr &resp) {
                             REQUIRE(result == ReqResult::Ok);
                             CHECK(resp->getBody() == "<p>Hello, world!</p>");
-                            // LOG_DEBUG << resp->getBody();
+                            // DebugL << resp->getBody();
                         });
     /// 3. Post to /tpost to test Http Method constraint
     req = HttpRequest::newHttpRequest();
@@ -575,7 +575,7 @@ void doTest(const HttpClientPtr &client, std::shared_ptr<test::Case> TEST_CTX)
             REQUIRE(result == ReqResult::Ok);
             REQUIRE(resp->getBody().length() == JPG_LEN);
             auto &lastModified = resp->getHeader("last-modified");
-            // LOG_DEBUG << lastModified;
+            // DebugL << lastModified;
             // Test 'Not Modified'
             auto req = HttpRequest::newHttpRequest();
             req->setMethod(drogon::Get);
@@ -781,7 +781,7 @@ void doTest(const HttpClientPtr &client, std::shared_ptr<test::Case> TEST_CTX)
     req->setPath("/RangeTestController/10/20");
     client->sendRequest(
         req, [req, TEST_CTX](ReqResult result, const HttpResponsePtr &resp) {
-            LOG_DEBUG << "result=" << (int)result;
+            DebugL << "result=" << (int)result;
             REQUIRE(result == ReqResult::Ok);
             CHECK(resp->getStatusCode() == k206PartialContent);
             CHECK(resp->getBody() == "01234567890123456789");
@@ -1200,13 +1200,13 @@ void loadFileLengths()
     struct stat filestat;
     if (stat("index.html", &filestat) < 0)
     {
-        LOG_SYSERR << "Unable to retrieve index.html file sizes";
+        ErrorL << "Unable to retrieve index.html file sizes";
         exit(1);
     }
     indexLen = filestat.st_size;
     if (stat("a-directory/page.html", &filestat) < 0)
     {
-        LOG_SYSERR << "Unable to retrieve a-directory/page.html file sizes";
+        ErrorL << "Unable to retrieve a-directory/page.html file sizes";
         exit(1);
     }
     indexImplicitLen = filestat.st_size;
@@ -1273,7 +1273,7 @@ DROGON_TEST(HttpsTimeoutTest)
 
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(trantor::Logger::LogLevel::kDebug);
+    trantor::Logger::setLogLevel(toolkit::LogLevel::kDebug);
     loadFileLengths();
 
     std::promise<void> p1;

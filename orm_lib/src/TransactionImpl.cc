@@ -15,7 +15,7 @@
 #include "TransactionImpl.h"
 #include "../../lib/src/TaskTimeoutFlag.h"
 #include <string_view>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 using namespace drogon::orm;
 using namespace drogon;
@@ -36,12 +36,12 @@ TransactionImpl::TransactionImpl(ClientType type,
 
 TransactionImpl::~TransactionImpl()
 {
-    LOG_TRACE << "Destruct";
+    TraceL << "Destruct";
     assert(sqlCmdBuffer_.empty());
     if (!isCommitedOrRolledback_)
     {
         auto loop = connectionPtr_->loop();
-        loop->queueInLoop([conn = connectionPtr_,
+        loop->async([conn = connectionPtr_,
                            ucb = std::move(usedUpCallback_),
                            commitCb = std::move(commitCallback_)]() {
             conn->setIdleCallback([ucb = std::move(ucb)]() {
@@ -55,7 +55,7 @@ TransactionImpl::~TransactionImpl()
                 {},
                 {},
                 [commitCb](const Result &) {
-                    LOG_TRACE << "Transaction committed!";
+                    TraceL << "Transaction committed!";
                     if (commitCb)
                     {
                         commitCb(true);
@@ -68,7 +68,7 @@ TransactionImpl::~TransactionImpl()
                     }
                     catch (const DrogonDbException &e)
                     {
-                        LOG_ERROR << "Transaction submission failed:"
+                        ErrorL << "Transaction submission failed:"
                                   << e.base().what();
                         if (commitCb)
                         {
@@ -76,7 +76,7 @@ TransactionImpl::~TransactionImpl()
                         }
                     }
                 });
-        });
+        }, false);
     }
     else
     {
@@ -96,7 +96,8 @@ void TransactionImpl::execSqlInLoop(
     ResultCallback &&rcb,
     std::function<void(const std::exception_ptr &)> &&exceptCallback)
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     if (!isCommitedOrRolledback_)
     {
         if (timeout_ > 0.0)
@@ -156,7 +157,7 @@ void TransactionImpl::rollback()
 {
     auto thisPtr = shared_from_this();
 
-    loop_->runInLoop([thisPtr]() {
+    loop_->async([thisPtr]() {
         if (thisPtr->isCommitedOrRolledback_)
             return;
         if (thisPtr->isWorking_)
@@ -166,13 +167,13 @@ void TransactionImpl::rollback()
             cmdPtr->sql_ = "rollback";
             cmdPtr->parametersNumber_ = 0;
             cmdPtr->callback_ = [thisPtr](const Result &) {
-                LOG_DEBUG << "Transaction roll back!";
+                DebugL << "Transaction roll back!";
                 thisPtr->isCommitedOrRolledback_ = true;
             };
             cmdPtr->exceptionCallback_ = [thisPtr](const std::exception_ptr &) {
                 // clearupCb();
                 thisPtr->isCommitedOrRolledback_ = true;
-                LOG_ERROR << "Transaction roll back error";
+                ErrorL << "Transaction roll back error";
             };
             cmdPtr->isRollbackCmd_ = true;
             // Rollback cmd should be executed firstly, so we push it in front
@@ -189,13 +190,13 @@ void TransactionImpl::rollback()
             {},
             {},
             [thisPtr](const Result &) {
-                LOG_TRACE << "Transaction roll back!";
+                TraceL << "Transaction roll back!";
                 thisPtr->isCommitedOrRolledback_ = true;
                 // clearupCb();
             },
             [thisPtr](const std::exception_ptr &) {
                 // clearupCb();
-                LOG_ERROR << "Transaction roll back error";
+                ErrorL << "Transaction roll back error";
                 thisPtr->isCommitedOrRolledback_ = true;
             });
     });
@@ -203,7 +204,8 @@ void TransactionImpl::rollback()
 
 void TransactionImpl::execNewTask()
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
     thisPtr_.reset();
     if (!isWorking_)
         return;
@@ -295,7 +297,7 @@ const char *TransactionImpl::beginSql() const noexcept
 
 void TransactionImpl::doBegin()
 {
-    loop_->queueInLoop([thisPtr = shared_from_this()]() {
+    loop_->async([thisPtr = shared_from_this()]() {
         std::weak_ptr<TransactionImpl> weakPtr = thisPtr;
         thisPtr->connectionPtr_->setIdleCallback([weakPtr]() {
             auto thisPtr = weakPtr.lock();
@@ -313,7 +315,7 @@ void TransactionImpl::doBegin()
             {},
             {},
             {},
-            [](const Result &) { LOG_TRACE << "Transaction begin!"; },
+            [](const Result &) { TraceL << "Transaction begin!"; },
             [thisPtr](const std::exception_ptr &ePtr) {
                 try
                 {
@@ -321,7 +323,7 @@ void TransactionImpl::doBegin()
                 }
                 catch (const std::exception &e)
                 {
-                    LOG_ERROR << "Error occurred in transaction begin:"
+                    ErrorL << "Error occurred in transaction begin:"
                               << e.what();
                 }
                 thisPtr->isCommitedOrRolledback_ = true;
@@ -332,7 +334,7 @@ void TransactionImpl::doBegin()
                                         "execute queued SQL")));
                 thisPtr->releaseConnection();
             });
-    });
+    }, false);
 }
 
 void TransactionImpl::execSqlInLoopWithTimeout(

@@ -14,6 +14,7 @@
 
 #include "PgListener.h"
 #include "PgConnection.h"
+#include "Thread/WorkThreadPool.h"
 
 using namespace drogon;
 using namespace drogon::orm;
@@ -21,14 +22,15 @@ using namespace drogon::orm;
 #define MAX_UNLISTEN_RETRY 3
 #define MAX_LISTEN_RETRY 10
 
-PgListener::PgListener(std::string connInfo, trantor::EventLoop *loop)
+PgListener::PgListener(std::string connInfo, const std::shared_ptr<toolkit::EventPoller> &loop)
     : connectionInfo_(std::move(connInfo)), loop_(loop)
 {
     if (!loop)
     {
-        threadPtr_ = std::make_unique<trantor::EventLoopThread>();
-        threadPtr_->run();
-        loop_ = threadPtr_->getLoop();
+        loop_ = toolkit::WorkThreadPool::Instance().getPoller();
+        // threadPtr_ = std::make_unique<trantor::EventLoopThread>();
+        // threadPtr_->run();
+        // loop_ = threadPtr_->getLoop();
     }
 }
 
@@ -45,7 +47,7 @@ void PgListener::init() noexcept
 {
     // shared_from_this() can not be called in constructor
     std::weak_ptr<PgListener> weakThis = shared_from_this();
-    loop_->queueInLoop([weakThis]() {
+    loop_->async([weakThis]() {
         auto thisPtr = weakThis.lock();
         if (!thisPtr)
         {
@@ -59,7 +61,7 @@ void PgListener::listen(
     const std::string &channel,
     std::function<void(std::string, std::string)> messageCallback) noexcept
 {
-    if (loop_->isInLoopThread())
+    if (loop_->isCurrentThread())
     {
         listenChannels_[channel].push_back(std::move(messageCallback));
         listenInLoop(channel, true);
@@ -67,7 +69,7 @@ void PgListener::listen(
     else
     {
         std::weak_ptr<PgListener> weakThis = shared_from_this();
-        loop_->queueInLoop(
+        loop_->async(
             [weakThis, channel, cb = std::move(messageCallback)]() mutable {
                 auto thisPtr = weakThis.lock();
                 if (!thisPtr)
@@ -82,7 +84,7 @@ void PgListener::listen(
 
 void PgListener::unlisten(const std::string &channel) noexcept
 {
-    if (loop_->isInLoopThread())
+    if (loop_->isCurrentThread())
     {
         listenChannels_.erase(channel);
         listenInLoop(channel, false);
@@ -90,7 +92,7 @@ void PgListener::unlisten(const std::string &channel) noexcept
     else
     {
         std::weak_ptr<PgListener> weakThis = shared_from_this();
-        loop_->queueInLoop([weakThis, channel]() {
+        loop_->async([weakThis, channel]() {
             auto thisPtr = weakThis.lock();
             if (!thisPtr)
             {
@@ -105,7 +107,8 @@ void PgListener::unlisten(const std::string &channel) noexcept
 void PgListener::onMessage(const std::string &channel,
                            const std::string &message) const noexcept
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
 
     auto iter = listenChannels_.find(channel);
     if (iter == listenChannels_.end())
@@ -120,7 +123,8 @@ void PgListener::onMessage(const std::string &channel,
 
 void PgListener::listenAll() noexcept
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
 
     listenTasks_.clear();
     for (auto &item : listenChannels_)
@@ -132,7 +136,8 @@ void PgListener::listenAll() noexcept
 
 void PgListener::listenNext() noexcept
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
 
     if (listenTasks_.empty())
     {
@@ -147,7 +152,9 @@ void PgListener::listenInLoop(const std::string &channel,
                               bool listen,
                               std::shared_ptr<unsigned int> retryCnt)
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
+    assert(loop_->isCurrentThread());
+
     if (!retryCnt)
         retryCnt = std::make_shared<unsigned int>(0);
     if (conn_ && !conn_->isWorking())
@@ -157,7 +164,7 @@ void PgListener::listenInLoop(const std::string &channel,
             escapeIdentifier(pgConn, channel.c_str(), channel.size());
         if (escapedChannel.empty())
         {
-            LOG_ERROR << "Failed to escape pg identifier, stop listen";
+            ErrorL << "Failed to escape pg identifier, stop listen";
             // TODO: report
             return;
         }
@@ -176,11 +183,11 @@ void PgListener::listenInLoop(const std::string &channel,
             [listen, channel, sql](const Result &r) {
                 if (listen)
                 {
-                    LOG_TRACE << "Listen channel " << channel;
+                    TraceL << "Listen channel " << channel;
                 }
                 else
                 {
-                    LOG_TRACE << "Unlisten channel " << channel;
+                    TraceL << "Unlisten channel " << channel;
                 }
             },
             [listen, channel, weakThis, sql, retryCnt, loop = loop_](
@@ -194,11 +201,11 @@ void PgListener::listenInLoop(const std::string &channel,
                     ++(*retryCnt);
                     if (listen)
                     {
-                        LOG_ERROR << "Failed to listen channel " << channel
+                        ErrorL << "Failed to listen channel " << channel
                                   << ", error: " << ex.base().what();
                         if (*retryCnt > MAX_LISTEN_RETRY)
                         {
-                            LOG_ERROR << "Failed to listen channel " << channel
+                            ErrorL << "Failed to listen channel " << channel
                                       << " after max attempt. Stop trying.";
                             // TODO: report
                             return;
@@ -206,11 +213,11 @@ void PgListener::listenInLoop(const std::string &channel,
                     }
                     else
                     {
-                        LOG_ERROR << "Failed to unlisten channel " << channel
+                        ErrorL << "Failed to unlisten channel " << channel
                                   << ", error: " << ex.base().what();
                         if (*retryCnt > MAX_UNLISTEN_RETRY)
                         {
-                            LOG_ERROR << "Failed to unlisten channel "
+                            ErrorL << "Failed to unlisten channel "
                                       << channel
                                       << " after max attempt. Stop trying.";
                             // TODO: report?
@@ -218,12 +225,13 @@ void PgListener::listenInLoop(const std::string &channel,
                         }
                     }
                     auto delay = (*retryCnt) < 5 ? (*retryCnt * 2) : 10;
-                    loop->runAfter(delay, [=]() {
+                    loop->doDelayTask(delay * 1000, [=]() {
                         auto thisPtr = weakThis.lock();
                         if (thisPtr)
                         {
                             thisPtr->listenInLoop(channel, listen, retryCnt);
                         }
+                        return 0;
                     });
                 }
             });
@@ -232,13 +240,13 @@ void PgListener::listenInLoop(const std::string &channel,
 
     if (listenTasks_.size() > 20000)
     {
-        LOG_WARN << "Too many queries in listen buffer. Stop listen channel "
+        WarnL << "Too many queries in listen buffer. Stop listen channel "
                  << channel;
         // TODO: report
         return;
     }
 
-    LOG_TRACE << "Add to task queue, channel " << channel;
+    TraceL << "Add to task queue, channel " << channel;
     listenTasks_.emplace_back(listen, channel);
 }
 
@@ -267,17 +275,18 @@ PgConnectionPtr PgListener::newConnection(
             // Reconnect after delay
             ++(*retryCnt);
             unsigned int delay = (*retryCnt) < 5 ? (*retryCnt * 2) : 10;
-            thisPtr->loop_->runAfter(delay, [weakPtr, closeConnPtr, retryCnt] {
+            thisPtr->loop_->doDelayTask(delay * 1000, [weakPtr, closeConnPtr, retryCnt] {
                 auto thisPtr = weakPtr.lock();
                 if (!thisPtr)
-                    return;
+                    return 0;
                 assert(!thisPtr->connHolder_);
                 thisPtr->connHolder_ = thisPtr->newConnection(retryCnt);
+                return 0;
             });
         });
     connPtr->setOkCallback(
         [weakPtr, retryCnt](const DbConnectionPtr &okConnPtr) {
-            LOG_TRACE << "connected after " << *retryCnt << " tries";
+            TraceL << "connected after " << *retryCnt << " tries";
             (*retryCnt) = 0;
             auto thisPtr = weakPtr.lock();
             if (!thisPtr)
@@ -319,7 +328,7 @@ std::string PgListener::escapeIdentifier(const PgConnectionPtr &conn,
         });
     if (!res)
     {
-        LOG_ERROR << "Error when escaping identifier ["
+        ErrorL << "Error when escaping identifier ["
                   << std::string(str, length) << "]. "
                   << PQerrorMessage(conn->pgConn().get());
         return {};

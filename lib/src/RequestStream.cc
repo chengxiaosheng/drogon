@@ -62,13 +62,13 @@ class RequestStreamImpl : public RequestStream
             return;
         }
         auto loop = req->getLoop();
-        if (loop->isInLoopThread())
+        if (loop->isCurrentThread())
         {
             req->setStreamReader(std::move(reader));
         }
         else
         {
-            loop->queueInLoop([req, reader = std::move(reader)]() mutable {
+            loop->async([req, reader = std::move(reader)]() mutable {
                 req->setStreamReader(std::move(reader));
             });
         }

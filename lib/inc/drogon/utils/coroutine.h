@@ -13,9 +13,9 @@
  */
 #pragma once
 
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoop.h>
-#include <trantor/utils/Logger.h>
+#include <Util/util.h>
+#include <Poller/EventPoller.h>
+#include <Util/logger.h>
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -396,7 +396,7 @@ struct AsyncTask
 
         void unhandled_exception()
         {
-            LOG_FATAL << "Exception escaping AsyncTask.";
+            ErrorL << "Exception escaping AsyncTask.";
             std::terminate();
         }
 
@@ -417,7 +417,7 @@ struct AsyncTask
 /// coroutines
 // The user is responsible to fill in `await_suspend()` and constructors.
 template <typename T = void>
-struct CallbackAwaiter : public trantor::NonCopyable
+struct CallbackAwaiter : public toolkit::noncopyable
 {
     bool await_ready() noexcept
     {
@@ -466,7 +466,7 @@ struct CallbackAwaiter : public trantor::NonCopyable
 };
 
 template <>
-struct CallbackAwaiter<void> : public trantor::NonCopyable
+struct CallbackAwaiter<void> : public toolkit::noncopyable
 {
     bool await_ready() noexcept
     {
@@ -606,7 +606,7 @@ struct [[nodiscard]] TimerAwaiter : CallbackAwaiter<void>
     }
 
   private:
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     double delay_;
 };
 
@@ -662,7 +662,7 @@ struct [[nodiscard]] SwitchThreadAwaiter : CallbackAwaiter<void>
     }
 
   private:
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
 };
 
 struct [[nodiscard]] EndAwaiter : CallbackAwaiter<void>
@@ -801,7 +801,7 @@ struct [[nodiscard]] EventLoopAwaiter : public drogon::CallbackAwaiter<T>
             }
             catch (const std::exception &err)
             {
-                LOG_ERROR << err.what();
+                ErrorL << err.what();
                 this->setException(std::current_exception());
                 handle.resume();
             }
@@ -810,7 +810,7 @@ struct [[nodiscard]] EventLoopAwaiter : public drogon::CallbackAwaiter<T>
 
   private:
     std::function<T()> task_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
 };
 
 template <typename... Tasks>
@@ -1116,7 +1116,7 @@ class Mutex final
         friend class Mutex;
 
         Mutex &mutex_;
-        trantor::EventLoop *loop_;
+        std::shared_ptr<toolkit::EventPoller> loop_;
         std::coroutine_handle<> handle_;
         CoroMutexAwaiter *next_;
     };

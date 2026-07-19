@@ -15,7 +15,7 @@ static void makePostRespose(
 void MethodTest::get(const HttpRequestPtr &req,
                      std::function<void(const HttpResponsePtr &)> &&callback)
 {
-    LOG_DEBUG;
+    DebugL;
     makeGetRespose(callback);
 }
 
@@ -23,7 +23,7 @@ void MethodTest::post(const HttpRequestPtr &req,
                       std::function<void(const HttpResponsePtr &)> &&callback,
                       std::string str)
 {
-    LOG_DEBUG << str;
+    DebugL << str;
     makePostRespose(callback);
 }
 
@@ -31,7 +31,7 @@ void MethodTest::getReg(const HttpRequestPtr &req,
                         std::function<void(const HttpResponsePtr &)> &&callback,
                         std::string regStr)
 {
-    LOG_DEBUG << regStr;
+    DebugL << regStr;
     makeGetRespose(callback);
 }
 
@@ -41,8 +41,8 @@ void MethodTest::postReg(
     std::string regStr,
     std::string str)
 {
-    LOG_DEBUG << regStr;
-    LOG_DEBUG << str;
+    DebugL << regStr;
+    DebugL << str;
     makePostRespose(callback);
 }
 
@@ -51,6 +51,6 @@ void MethodTest::postRegex(
     std::function<void(const HttpResponsePtr &)> &&callback,
     std::string regStr)
 {
-    LOG_DEBUG << regStr;
+    DebugL << regStr;
     makePostRespose(callback);
 }

@@ -14,7 +14,7 @@
 
 #include "HttpUtils.h"
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <map>
 #include <unordered_map>
 #include <mutex>
@@ -666,7 +666,7 @@ void registerCustomExtensionMime(const std::string &ext,
     auto &mimeStr = customMime[ext];
     if (!mimeStr.empty())
     {
-        LOG_WARN << ext << " has already been registered as type " << mime
+        WarnL << ext << " has already been registered as type " << mime
                  << ". Overwriting.";
     }
     mimeStr = mime;

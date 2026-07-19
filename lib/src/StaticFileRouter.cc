@@ -35,16 +35,16 @@
 
 using namespace drogon;
 
-void StaticFileRouter::init(const std::vector<trantor::EventLoop *> &ioLoops)
+void StaticFileRouter::init(/*const std::vector<trantor::EventLoop *> &ioLoops*/)
 {
     // Max timeout up to about 70 days;
     staticFilesCacheMap_ = std::make_unique<
         IOThreadStorage<std::unique_ptr<CacheMap<std::string, char>>>>();
     staticFilesCacheMap_->init(
-        [&ioLoops](std::unique_ptr<CacheMap<std::string, char>> &mapPtr,
+        [/*&ioLoops*/](std::unique_ptr<CacheMap<std::string, char>> &mapPtr,
                    size_t i) {
-            assert(i == ioLoops[i]->index());
-            mapPtr = std::make_unique<CacheMap<std::string, char>>(ioLoops[i],
+            // assert(i == ioLoops[i]->index());
+            mapPtr = std::make_unique<CacheMap<std::string, char>>(toolkit::EventPollerPool::Instance()[i],
                                                                    1.0f,
                                                                    4,
                                                                    50);
@@ -53,13 +53,19 @@ void StaticFileRouter::init(const std::vector<trantor::EventLoop *> &ioLoops)
         IOThreadStorage<std::unordered_map<std::string, HttpResponsePtr>>>();
     ioLocationsPtr_ =
         std::make_shared<IOThreadStorage<std::vector<Location>>>();
-    for (auto *loop : ioLoops)
-    {
-        loop->queueInLoop(
-            [ioLocationsPtr = ioLocationsPtr_, locations = locations_] {
-                **ioLocationsPtr = locations;
-            });
-    }
+
+    toolkit::EventPollerPool::Instance().for_each([&](const toolkit::TaskExecutor::Ptr &executor) {
+       executor->async([ioLocationsPtr = ioLocationsPtr_, locations = locations_]() {
+            **ioLocationsPtr = locations;
+       });
+    });
+    // for (auto *loop : ioLoops)
+    // {
+    //     loop->queueInLoop(
+    //         [ioLocationsPtr = ioLocationsPtr_, locations = locations_] {
+    //             **ioLocationsPtr = locations;
+    //         });
+    // }
 }
 
 void StaticFileRouter::reset()
@@ -269,7 +275,7 @@ void StaticFileRouter::route(
             std::string filetype = lPath.substr(pos + 1);
             if (fileTypeSet_.find(filetype) != fileTypeSet_.end())
             {
-                // LOG_INFO << "file query!" << path;
+                // InfoL << "file query!" << path;
                 std::string filePath = directoryPath;
                 sendStaticFileResponse(filePath, req, std::move(callback), "");
                 return;
@@ -300,7 +306,7 @@ static bool getFileStat(const std::string &filePath, FileStat &myStat)
     if (stat(utils::toNativePath(filePath).c_str(), &fileStat) == 0 &&
         S_ISREG(fileStat.st_mode))
     {
-        LOG_TRACE << "last modify time:" << fileStat.st_mtime;
+        TraceL << "last modify time:" << fileStat.st_mtime;
 #ifdef _WIN32
         gmtime_s(&myStat.modifiedTime_, &fileStat.st_mtime);
 #else
@@ -350,7 +356,7 @@ void StaticFileRouter::sendStaticFileResponse(
         const std::string &modiStr = req->getHeaderBy("if-modified-since");
         if (enableLastModify_ && modiStr == fileStat.modifiedTimeStr_)
         {
-            LOG_TRACE << "Not modified!";
+            TraceL << "Not modified!";
             std::shared_ptr<HttpResponseImpl> resp =
                 std::make_shared<HttpResponseImpl>();
             resp->setStatusCode(k304NotModified);
@@ -465,7 +471,7 @@ void StaticFileRouter::sendStaticFileResponse(
         }
         else
         {
-            LOG_TRACE << "enabled LastModify";
+            TraceL << "enabled LastModify";
             if (!fileExists && !getFileStat(filePath, fileStat))
             {
                 defaultHandler_(req, std::move(callback));
@@ -475,7 +481,7 @@ void StaticFileRouter::sendStaticFileResponse(
             const std::string &modiStr = req->getHeaderBy("if-modified-since");
             if (modiStr == fileStat.modifiedTimeStr_)
             {
-                LOG_TRACE << "not Modified!";
+                TraceL << "not Modified!";
                 std::shared_ptr<HttpResponseImpl> resp =
                     std::make_shared<HttpResponseImpl>();
                 resp->setStatusCode(k304NotModified);
@@ -487,7 +493,7 @@ void StaticFileRouter::sendStaticFileResponse(
     }
     if (cachedResp)
     {
-        LOG_TRACE << "Using file cache";
+        TraceL << "Using file cache";
         callback(cachedResp);
         return;
     }
@@ -587,13 +593,13 @@ void StaticFileRouter::sendStaticFileResponse(
         // cache the response for 5 seconds by default
         if (staticFilesCacheTime_ >= 0)
         {
-            LOG_TRACE << "Save in cache for " << staticFilesCacheTime_
+            TraceL << "Save in cache for " << staticFilesCacheTime_
                       << " seconds";
             resp->setExpiredTime(staticFilesCacheTime_);
             staticFilesCache_->getThreadData()[filePath] = resp;
             staticFilesCacheMap_->getThreadData()->insert(
                 filePath, 0, staticFilesCacheTime_, [this, filePath]() {
-                    LOG_TRACE << "Erase cache";
+                    TraceL << "Erase cache";
                     assert(staticFilesCache_->getThreadData().find(filePath) !=
                            staticFilesCache_->getThreadData().end());
                     staticFilesCache_->getThreadData().erase(filePath);

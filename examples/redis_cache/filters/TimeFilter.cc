@@ -27,7 +27,7 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
             {
                 auto lastDate =
                     co_await getFromCache<trantor::Date>(key, redisClient);
-                LOG_TRACE << "last:" << lastDate.toFormattedString(false);
+                TraceL << "last:" << lastDate.toFormattedString(false);
                 co_await updateCache(key, now, redisClient);
                 if (now > lastDate.after(10))
                 {
@@ -48,14 +48,14 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
             }
             catch (const std::exception &err)
             {
-                LOG_TRACE << "first visit,insert visitDate";
+                TraceL << "first visit,insert visitDate";
                 try
                 {
                     co_await updateCache(userid + "." VDate, now, redisClient);
                 }
                 catch (const std::exception &err)
                 {
-                    LOG_ERROR << err.what();
+                    ErrorL << err.what();
                     cb(HttpResponse::newHttpJsonResponse(err.what()));
                     co_return;
                 }

@@ -15,7 +15,7 @@
 #pragma once
 
 #include <trantor/net/TcpServer.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <functional>
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@ namespace drogon
 {
 struct ControllerBinderBase;
 
-class HttpServer : trantor::NonCopyable
+class HttpServer : toolkit::noncopyable
 {
   public:
     HttpServer(trantor::EventLoop *loop,

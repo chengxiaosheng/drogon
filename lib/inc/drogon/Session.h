@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -55,7 +55,7 @@ class Session
                 }
                 else
                 {
-                    LOG_ERROR << "Bad type";
+                    ErrorL << "Bad type";
                 }
             }
         }
@@ -84,7 +84,7 @@ class Session
                 }
                 else
                 {
-                    LOG_ERROR << "Bad type";
+                    ErrorL << "Bad type";
                 }
             }
         }
@@ -117,7 +117,7 @@ class Session
             }
             else
             {
-                LOG_ERROR << "Bad type";
+                ErrorL << "Bad type";
             }
         }
         else

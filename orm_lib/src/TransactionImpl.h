@@ -64,7 +64,7 @@ class TransactionImpl : public Transaction,
                  std::function<void(const std::exception_ptr &)>
                      &&exceptCallback) override
     {
-        if (loop_->isInLoopThread())
+        if (loop_->isCurrentThread())
         {
             execSqlInLoop(std::string_view{sql, sqlLength},
                           paraNum,
@@ -76,7 +76,7 @@ class TransactionImpl : public Transaction,
         }
         else
         {
-            loop_->queueInLoop(
+            loop_->async(
                 [thisPtr = shared_from_this(),
                  sql = std::string_view{sql, sqlLength},
                  paraNum,
@@ -155,7 +155,7 @@ class TransactionImpl : public Transaction,
     friend class DbClientLockFree;
     void doBegin();
     const char *beginSql() const noexcept;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     std::function<void(bool)> commitCallback_;
     std::shared_ptr<TransactionImpl> thisPtr_;
     double timeout_{-1.0};

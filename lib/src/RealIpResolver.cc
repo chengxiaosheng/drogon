@@ -13,13 +13,13 @@
  */
 
 #include <drogon/drogon.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <drogon/plugins/RealIpResolver.h>
 
 using namespace drogon;
 using namespace drogon::plugin;
 
-struct XForwardedForParser : public trantor::NonCopyable
+struct XForwardedForParser : public toolkit::noncopyable
 {
     explicit XForwardedForParser(std::string value)
         : value_(std::move(value)), start_(value_.c_str()), len_(value_.size())
@@ -75,7 +75,7 @@ static trantor::InetAddress parseAddress(const std::string &addr)
     catch (const std::exception &ex)
     {
         (void)ex;
-        LOG_ERROR << "Error in ipv4 address: " + addr;
+        ErrorL << "Error in ipv4 address: " + addr;
         port = 0;
     }
     return trantor::InetAddress(addr.substr(0, pos), port);

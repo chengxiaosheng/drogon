@@ -13,7 +13,7 @@
  */
 
 #include "CacheFile.h"
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #ifdef _WIN32
 #include <mman.h>
 #include <drogon/utils/Utilities.h>
@@ -37,7 +37,7 @@ CacheFile::CacheFile(const std::string &path, bool autoDelete)
     }
 #endif
     if (!file_)
-        LOG_SYSERR << "CacheFile fopen:";
+        ErrorL << "CacheFile fopen:";
 }
 
 CacheFile::~CacheFile()
@@ -67,7 +67,7 @@ void CacheFile::append(const char *data, size_t length)
     if (file_)
     {
         if (!fwrite(data, length, 1, file_))
-            LOG_SYSERR << "CacheFile append:";
+            ErrorL << "CacheFile append:";
     }
 }
 
@@ -100,7 +100,7 @@ char *CacheFile::data()
         if (data_ == MAP_FAILED)
         {
             data_ = nullptr;
-            LOG_SYSERR << "CacheFile mmap:";
+            ErrorL << "CacheFile mmap:";
         }
     }
     return data_;

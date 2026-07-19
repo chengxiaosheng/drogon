@@ -16,7 +16,7 @@
 
 #include "impl_forwards.h"
 #include "ControllerBinderBase.h"
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <memory>
 #include <regex>
 #include <string>
@@ -29,7 +29,7 @@ class HttpControllerBinder;
 class HttpSimpleControllerBinder;
 struct WebsocketControllerBinder;
 
-class HttpControllersRouter : public trantor::NonCopyable
+class HttpControllersRouter : public toolkit::noncopyable
 {
   public:
     static HttpControllersRouter &instance()
@@ -38,7 +38,7 @@ class HttpControllersRouter : public trantor::NonCopyable
         return inst;
     }
 
-    void init(const std::vector<trantor::EventLoop *> &ioLoops);
+    void init(/*const std::vector<trantor::EventLoop *> &ioLoops*/);
     // clean all resources
     void reset();
 

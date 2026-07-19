@@ -13,9 +13,13 @@
  */
 
 #pragma once
+#include "Network/BufferSock.h"
+#include "Poller/EventPoller.h"
+#include "Poller/Timer.h"
+#include "Thread/WorkThreadPool.h"
+
 #include <drogon/exports.h>
 #include <drogon/utils/monitoring/Metric.h>
-#include <trantor/net/EventLoopThread.h>
 #include <string_view>
 #include <atomic>
 #include <mutex>
@@ -32,7 +36,7 @@ class DROGON_EXPORT Histogram : public Metric
   public:
     struct TimeBucket
     {
-        std::vector<uint64_t> buckets;
+        std::vector<uint64_t> buckets{};
         uint64_t count{0};
         double sum{0};
     };
@@ -43,7 +47,7 @@ class DROGON_EXPORT Histogram : public Metric
               const std::vector<double> &bucketBoundaries,
               const std::chrono::duration<double> &maxAge,
               uint64_t timeBucketsCount,
-              trantor::EventLoop *loop = nullptr) noexcept(false)
+              const std::shared_ptr<toolkit::EventPoller> &loop = nullptr) noexcept(false)
         : Metric(name, labelNames, labelValues),
           maxAge_(maxAge),
           timeBucketCount_(timeBucketsCount),
@@ -51,9 +55,7 @@ class DROGON_EXPORT Histogram : public Metric
     {
         if (loop == nullptr)
         {
-            loopThreadPtr_ = std::make_unique<trantor::EventLoopThread>();
-            loopPtr_ = loopThreadPtr_->getLoop();
-            loopThreadPtr_->run();
+            loopPtr_ = toolkit::WorkThreadPool::Instance().getPoller();
         }
         else
         {
@@ -85,10 +87,7 @@ class DROGON_EXPORT Histogram : public Metric
 
     ~Histogram() override
     {
-        if (timerId_ != trantor::InvalidTimerId)
-        {
-            loopPtr_->invalidateTimer(timerId_);
-        }
+        timerId_.reset();
     }
 
     static std::string_view type()
@@ -97,12 +96,11 @@ class DROGON_EXPORT Histogram : public Metric
     }
 
   private:
-    std::deque<TimeBucket> timeBuckets_;
-    std::unique_ptr<trantor::EventLoopThread> loopThreadPtr_;
-    trantor::EventLoop *loopPtr_{nullptr};
+    std::deque<TimeBucket> timeBuckets_{};
+    std::shared_ptr<toolkit::EventPoller> loopPtr_{nullptr};
     mutable std::mutex mutex_;
     std::chrono::duration<double> maxAge_;
-    trantor::TimerId timerId_{trantor::InvalidTimerId};
+    std::shared_ptr<toolkit::Timer> timerId_{nullptr};
     size_t timeBucketCount_{0};
     const std::vector<double> bucketBoundaries_;
 

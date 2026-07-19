@@ -58,7 +58,7 @@ class StaticFileRouter
         brStaticFlag_ = useBrStatic;
     }
 
-    void init(const std::vector<trantor::EventLoop *> &ioLoops);
+    void init(/*const std::vector<trantor::EventLoop *> &ioLoops*/);
     void reset();
 
     void sendStaticFileResponse(

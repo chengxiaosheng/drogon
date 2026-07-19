@@ -6,16 +6,17 @@ void Histogram::observe(double value)
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (maxAge_ > std::chrono::seconds(0) &&
-        timerId_ == trantor::InvalidTimerId)
+        !timerId_)
     {
         std::weak_ptr<Histogram> weakPtr =
             std::dynamic_pointer_cast<Histogram>(shared_from_this());
-        timerId_ = loopPtr_->runEvery(maxAge_ / timeBucketCount_, [weakPtr]() {
+        timerId_ = std::make_shared<toolkit::Timer>((maxAge_ / timeBucketCount_).count(), [weakPtr]() {
             auto thisPtr = weakPtr.lock();
             if (!thisPtr)
-                return;
+                return false;
             thisPtr->rotateTimeBuckets();
-        });
+            return true;
+        }, loopPtr_);
     }
     auto &currentBucket = timeBuckets_.back();
     currentBucket.sum += value;

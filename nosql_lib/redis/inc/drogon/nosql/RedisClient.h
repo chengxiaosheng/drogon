@@ -19,7 +19,7 @@
 #include <drogon/nosql/RedisSubscriber.h>
 #include <string_view>
 #include <trantor/net/InetAddress.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <memory>
 #include <functional>
 #include <future>
@@ -55,7 +55,7 @@ struct [[nodiscard]] RedisAwaiter : public CallbackAwaiter<RedisResult>
                 handle.resume();
             },
             [handle, this](const RedisException &e) {
-                LOG_ERROR << e.what();
+                ErrorL << e.what();
                 this->setException(std::make_exception_ptr(e));
                 handle.resume();
             });

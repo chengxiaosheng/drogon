@@ -15,7 +15,7 @@
 #include "ListenerManager.h"
 #include <drogon/config.h>
 #include <fcntl.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include "HttpAppFrameworkImpl.h"
 #include "HttpServer.h"
 #ifndef _WIN32
@@ -26,7 +26,7 @@
 namespace drogon
 {
 #ifndef _WIN32
-class DrogonFileLocker : public trantor::NonCopyable
+class DrogonFileLocker : public toolkit::noncopyable
 {
   public:
     DrogonFileLocker()
@@ -60,7 +60,7 @@ void ListenerManager::addListener(
     const std::vector<std::pair<std::string, std::string>> &sslConfCmds)
 {
     if (useSSL && !utils::supportsTls())
-        LOG_ERROR << "Can't use SSL without OpenSSL found in your system";
+        ErrorL << "Can't use SSL without OpenSSL found in your system";
     listeners_.emplace_back(
         ip, port, useSSL, certFile, keyFile, useOldTLS, sslConfCmds);
 }
@@ -78,10 +78,10 @@ std::vector<trantor::InetAddress> ListenerManager::getListeners() const
 void ListenerManager::createListeners(
     const std::string &globalCertFile,
     const std::string &globalKeyFile,
-    const std::vector<std::pair<std::string, std::string>> &sslConfCmds,
-    const std::vector<trantor::EventLoop *> &ioLoops)
+    const std::vector<std::pair<std::string, std::string>> &sslConfCmds/*,
+    const std::vector<trantor::EventLoop *> &ioLoops*/)
 {
-    LOG_TRACE << "thread num=" << ioLoops.size();
+    TraceL << "thread num=" << ioLoops.size();
 #ifdef __linux__
     for (size_t i = 0; i < ioLoops.size(); ++i)
     {
@@ -92,7 +92,7 @@ void ListenerManager::createListeners(
             InetAddress listenAddress(ip, listener.port_, isIpv6);
             if (listenAddress.isUnspecified())
             {
-                LOG_FATAL << "Failed to parse IP address '" << ip
+                ErrorL << "Failed to parse IP address '" << ip
                           << "'. (Note: FQDN/domain names/hostnames are not "
                              "supported. Including 'localhost')";
                 abort();

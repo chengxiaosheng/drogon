@@ -73,7 +73,7 @@ void WebSocketConnectionImpl::sendWsData(const char *msg,
                                          uint64_t len,
                                          unsigned char opcode)
 {
-    LOG_TRACE << "send " << len << " bytes";
+    TraceL << "send " << len << " bytes";
 
     // Format the frame
     std::string bytesFormatted;
@@ -92,8 +92,8 @@ void WebSocketConnectionImpl::sendWsData(const char *msg,
         bytesFormatted[1] = 126;
         bytesFormatted[2] = ((len >> 8) & 255);
         bytesFormatted[3] = ((len) & 255);
-        LOG_TRACE << "bytes[2]=" << (size_t)bytesFormatted[2];
-        LOG_TRACE << "bytes[3]=" << (size_t)bytesFormatted[3];
+        TraceL << "bytes[2]=" << (size_t)bytesFormatted[2];
+        TraceL << "bytes[3]=" << (size_t)bytesFormatted[3];
         indexStartRawData = 4;
     }
     else
@@ -125,7 +125,7 @@ void WebSocketConnectionImpl::sendWsData(const char *msg,
                                              masks_.size() * sizeof(uint32_t));
                 if (status == false)
                 {
-                    LOG_ERROR << "Failed to generate random numbers for "
+                    ErrorL << "Failed to generate random numbers for "
                                  "WebSocket mask";
                     abort();
                 }
@@ -139,7 +139,7 @@ void WebSocketConnectionImpl::sendWsData(const char *msg,
             bool status = utils::secureRandomBytes(&random, sizeof(random));
             if (status == false)
             {
-                LOG_ERROR
+                ErrorL
                     << "Failed to generate random numbers for WebSocket mask";
                 abort();
             }
@@ -215,7 +215,8 @@ void WebSocketConnectionImpl::WebSocketConnectionImpl::shutdown(
     const CloseCode code,
     const std::string &reason)
 {
-    tcpConnectionPtr_->getLoop()->invalidateTimer(pingTimerId_);
+    // tcpConnectionPtr_->getLoop()->invalidateTimer(pingTimerId_);
+    pingTimerId_.reset();
     if (!tcpConnectionPtr_->connected())
         return;
     std::string message;
@@ -238,13 +239,13 @@ void WebSocketConnectionImpl::setPingMessage(
     const std::chrono::duration<double> &interval)
 {
     auto loop = tcpConnectionPtr_->getLoop();
-    if (loop->isInLoopThread())
+    if (loop->isCurrentThread())
     {
         setPingMessageInLoop(std::string{message}, interval);
     }
     else
     {
-        loop->queueInLoop(
+        loop->async(
             [msg = message, interval, thisPtr = shared_from_this()]() mutable {
                 thisPtr->setPingMessageInLoop(std::move(msg), interval);
             });
@@ -254,13 +255,13 @@ void WebSocketConnectionImpl::setPingMessage(
 void WebSocketConnectionImpl::disablePing()
 {
     auto loop = tcpConnectionPtr_->getLoop();
-    if (loop->isInLoopThread())
+    if (loop->isCurrentThread())
     {
         disablePingInLoop();
     }
     else
     {
-        loop->queueInLoop(
+        loop->async(
             [thisPtr = shared_from_this()]() { thisPtr->disablePingInLoop(); });
     }
 }
@@ -276,7 +277,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
         switch (opcode)
         {
             case 0:
-                LOG_TRACE << "continuation frame";
+                TraceL << "continuation frame";
                 break;
             case 1:
                 type_ = WebSocketMessageType::Text;
@@ -297,7 +298,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
                 isControlFrame = true;
                 break;
             default:
-                LOG_ERROR << "Unknown frame type";
+                ErrorL << "Unknown frame type";
                 return false;
                 break;
         }
@@ -306,7 +307,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
         if (!isFin && isControlFrame)
         {
             // rfc6455-5.5
-            LOG_ERROR << "Bad frame: all control frames MUST NOT be fragmented";
+            ErrorL << "Bad frame: all control frames MUST NOT be fragmented";
             return false;
         }
         auto secondByte = (*buffer)[1];
@@ -314,10 +315,10 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
         int isMasked = (secondByte & 0x80);
         if (isMasked != 0)
         {
-            LOG_TRACE << "data encoded!";
+            TraceL << "data encoded!";
         }
         else
-            LOG_TRACE << "plain data";
+            TraceL << "plain data";
         size_t indexFirstMask = 2;
 
         if (length == 126)
@@ -338,7 +339,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
             if (isControlFrame)
             {
                 // rfc6455-5.5
-                LOG_ERROR << "Bad frame: all control frames MUST have a "
+                ErrorL << "Bad frame: all control frames MUST have a "
                              "payload length "
                              "of 125 bytes or less";
                 return false;
@@ -355,7 +356,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
                 {
                     if (length > ((std::numeric_limits<size_t>::max)() >> 8))
                     {
-                        LOG_ERROR
+                        ErrorL
                             << "Payload length too large to handle safely";
                         return false;
                     }
@@ -364,7 +365,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
             }
             else
             {
-                LOG_ERROR << "Websock parsing failed!";
+                ErrorL << "Websock parsing failed!";
                 return false;
             }
         }
@@ -374,7 +375,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
             if (length > HttpAppFrameworkImpl::instance()
                              .getClientMaxWebSocketMessageSize())
             {
-                LOG_ERROR << "The size of the WebSocket message is too large!";
+                ErrorL << "The size of the WebSocket message is too large!";
                 buffer->retrieveAll();
                 return false;
             }
@@ -453,7 +454,7 @@ void WebSocketConnectionImpl::onNewMessage(
                 {
                     return;
                 }
-                // LOG_TRACE << "new message received: " << message
+                // TraceL << "new message received: " << message
                 //           << "\n(type=" << (int)type << ")";
                 messageCallback_(std::move(message), self, type);
             }
@@ -474,10 +475,11 @@ void WebSocketConnectionImpl::onNewMessage(
 
 void WebSocketConnectionImpl::disablePingInLoop()
 {
-    if (pingTimerId_ != trantor::InvalidTimerId)
-    {
-        tcpConnectionPtr_->getLoop()->invalidateTimer(pingTimerId_);
-    }
+    pingTimerId_.reset();
+    // if (pingTimerId_ != trantor::InvalidTimerId)
+    // {
+    //     tcpConnectionPtr_->getLoop()->invalidateTimer(pingTimerId_);
+    // }
 }
 
 void WebSocketConnectionImpl::setPingMessageInLoop(
@@ -486,12 +488,14 @@ void WebSocketConnectionImpl::setPingMessageInLoop(
 {
     std::weak_ptr<WebSocketConnectionImpl> weakPtr = shared_from_this();
     disablePingInLoop();
-    pingTimerId_ = tcpConnectionPtr_->getLoop()->runEvery(
+    pingTimerId_ = std::make_shared<toolkit::Timer>(
         interval.count(), [weakPtr, message = std::move(message)]() {
             auto thisPtr = weakPtr.lock();
             if (thisPtr)
             {
                 thisPtr->send(message, WebSocketMessageType::Ping);
+                return true;
             }
-        });
+            return false;
+        }, tcpConnectionPtr_->getLoop());
 }

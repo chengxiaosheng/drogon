@@ -24,7 +24,7 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 
 namespace drogon
 {
@@ -165,7 +165,7 @@ class DROGON_EXPORT WebSocketClient
 #endif
 
     /// Get the event loop of the client;
-    virtual trantor::EventLoop *getLoop() = 0;
+    virtual std::shared_ptr<toolkit::EventPoller> getLoop() = 0;
 
     /// Stop trying to connect to the server or close the connection.
     virtual void stop() = 0;
@@ -193,7 +193,7 @@ class DROGON_EXPORT WebSocketClient
         const std::string &ip,
         uint16_t port,
         bool useSSL = false,
-        trantor::EventLoop *loop = nullptr,
+        const std::shared_ptr<toolkit::EventPoller> &loop = nullptr,
         bool useOldTLS = false,
         bool validateCert = true);
 
@@ -223,7 +223,7 @@ class DROGON_EXPORT WebSocketClient
      */
     static WebSocketClientPtr newWebSocketClient(
         const std::string &hostString,
-        trantor::EventLoop *loop = nullptr,
+        const std::shared_ptr<toolkit::EventPoller> &loop = nullptr,
         bool useOldTLS = false,
         bool validateCert = true);
 

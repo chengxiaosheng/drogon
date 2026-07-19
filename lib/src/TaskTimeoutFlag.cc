@@ -15,7 +15,7 @@
 #include "TaskTimeoutFlag.h"
 using namespace drogon;
 
-TaskTimeoutFlag::TaskTimeoutFlag(trantor::EventLoop *loop,
+TaskTimeoutFlag::TaskTimeoutFlag(const std::shared_ptr<toolkit::EventPoller> &loop,
                                  const std::chrono::duration<double> &timeout,
                                  std::function<void()> timeoutCallback)
     : loop_(loop), timeout_(timeout), timeoutFunc_(timeoutCallback)
@@ -25,13 +25,14 @@ TaskTimeoutFlag::TaskTimeoutFlag(trantor::EventLoop *loop,
 void TaskTimeoutFlag::runTimer()
 {
     std::weak_ptr<TaskTimeoutFlag> weakPtr = shared_from_this();
-    loop_->runAfter(timeout_, [weakPtr]() {
+    loop_->doDelayTask(timeout_.count() * 1000, [weakPtr]() {
         auto thisPtr = weakPtr.lock();
         if (!thisPtr)
-            return;
+            return 0;
         if (thisPtr->done())
-            return;
+            return 0;
         thisPtr->timeoutFunc_();
+        return 0;
     });
 }
 

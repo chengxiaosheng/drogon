@@ -14,7 +14,7 @@
 
 #include <drogon/DrClassMap.h>
 #include <drogon/DrObject.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 using namespace drogon;
 
@@ -43,7 +43,7 @@ void DrClassMap::registerClass(const std::string &className,
                                const DrAllocFunc &func,
                                const DrSharedAllocFunc &sharedFunc)
 {
-    LOG_TRACE << "Register class:" << className;
+    TraceL << "Register class:" << className;
     getMap().insert(
         std::make_pair(className, std::make_pair(func, sharedFunc)));
 }

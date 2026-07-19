@@ -57,7 +57,7 @@ void [[className]]Base::getOne(const HttpRequestPtr &req,
                 (*callbackPtr)(resp);
                 return;
             }
-            LOG_ERROR<<e.base().what();
+            ErrorL<<e.base().what();
             Json::Value ret;
             ret["error"] = "database error";
             auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -123,7 +123,7 @@ void [[className]]Base::updateOne(const HttpRequestPtr &req,
     }
     catch(const Json::Exception &e)
     {
-        LOG_ERROR << e.what();
+        ErrorL << e.what();
         Json::Value ret;
         ret["error"]="Field type error";
         auto resp= HttpResponse::newHttpJsonResponse(ret);
@@ -167,7 +167,7 @@ void [[className]]Base::updateOne(const HttpRequestPtr &req,
             }
             else
             {
-                LOG_FATAL << "More than one resource is updated: " << count;
+                ErrorL << "More than one resource is updated: " << count;
                 Json::Value ret;
                 ret["error"] = "database error";
                 auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -176,7 +176,7 @@ void [[className]]Base::updateOne(const HttpRequestPtr &req,
             }
         },
         [callbackPtr](const DrogonDbException &e) {
-            LOG_ERROR << e.base().what();
+            ErrorL << e.base().what();
             Json::Value ret;
             ret["error"] = "database error";
             auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -215,7 +215,7 @@ void [[className]]Base::deleteOne(const HttpRequestPtr &req,
             }
             else
             {
-                LOG_FATAL << "Delete more than one records: " << count;
+                ErrorL << "Delete more than one records: " << count;
                 Json::Value ret;
                 ret["error"] = "Database error";
                 auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -224,7 +224,7 @@ void [[className]]Base::deleteOne(const HttpRequestPtr &req,
             }
         },
         [callbackPtr](const DrogonDbException &e) {
-            LOG_ERROR << e.base().what();
+            ErrorL << e.base().what();
             Json::Value ret;
             ret["error"] = "database error";
             auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -313,7 +313,7 @@ void [[className]]Base::get(const HttpRequestPtr &req,
                     (*callbackPtr)(HttpResponse::newHttpJsonResponse(ret));
                 },
                 [callbackPtr](const DrogonDbException &e) { 
-                    LOG_ERROR << e.base().what();
+                    ErrorL << e.base().what();
                     Json::Value ret;
                     ret["error"] = "database error";
                     auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -323,7 +323,7 @@ void [[className]]Base::get(const HttpRequestPtr &req,
         }
         catch(const std::exception &e)
         {
-            LOG_ERROR << e.what();
+            ErrorL << e.what();
             Json::Value ret;
             ret["error"] = e.what();
             auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -344,7 +344,7 @@ void [[className]]Base::get(const HttpRequestPtr &req,
                 (*callbackPtr)(HttpResponse::newHttpJsonResponse(ret));
             },
             [callbackPtr](const DrogonDbException &e) { 
-                LOG_ERROR << e.base().what();
+                ErrorL << e.base().what();
                 Json::Value ret;
                 ret["error"] = "database error";
                 auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -419,7 +419,7 @@ void [[className]]Base::create(const HttpRequestPtr &req,
                     makeJson(req, newObject)));
             },
             [callbackPtr](const DrogonDbException &e){
-                LOG_ERROR << e.base().what();
+                ErrorL << e.base().what();
                 Json::Value ret;
                 ret["error"] = "database error";
                 auto resp = HttpResponse::newHttpJsonResponse(ret);
@@ -429,7 +429,7 @@ void [[className]]Base::create(const HttpRequestPtr &req,
     }
     catch(const Json::Exception &e)
     {
-        LOG_ERROR << e.what();
+        ErrorL << e.what();
         Json::Value ret;
         ret["error"]="Field type error";
         auto resp= HttpResponse::newHttpJsonResponse(ret);

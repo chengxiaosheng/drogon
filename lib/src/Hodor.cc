@@ -90,7 +90,7 @@ void Hodor::initAndStart(const Json::Value &config)
             assert(subLimit.isObject());
             if (!subLimit["urls"].isArray() || subLimit["urls"].size() == 0)
             {
-                LOG_ERROR
+                ErrorL
                     << "The urls of sub_limits must be an array and not empty!";
                 continue;
             }
@@ -98,7 +98,7 @@ void Hodor::initAndStart(const Json::Value &config)
                 subLimit["ip_capacity"].asUInt() == 0 &&
                 subLimit["user_capacity"].asUInt() == 0)
             {
-                LOG_ERROR << "At least one capacity of sub_limits must be "
+                ErrorL << "At least one capacity of sub_limits must be "
                              "greater than 0!";
                 continue;
             }
@@ -125,7 +125,7 @@ void Hodor::initAndStart(const Json::Value &config)
 
 void Hodor::shutdown()
 {
-    LOG_TRACE << "Hodor plugin is shutdown!";
+    TraceL << "Hodor plugin is shutdown!";
 }
 
 bool Hodor::checkLimit(const drogon::HttpRequestPtr &req,

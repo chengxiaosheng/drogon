@@ -16,9 +16,9 @@
 
 #include "impl_forwards.h"
 #include <drogon/WebSocketClient.h>
-#include <trantor/net/EventLoop.h>
+#include <Poller/EventPoller.h>
 #include <trantor/net/TcpClient.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 
 #include <memory>
 #include <string>
@@ -56,18 +56,18 @@ class WebSocketClientImpl
     void addSSLConfigs(const std::vector<std::pair<std::string, std::string>>
                            &sslConfCmds) override;
 
-    trantor::EventLoop *getLoop() override
+    std::shared_ptr<toolkit::EventPoller> getLoop() override
     {
         return loop_;
     }
 
-    WebSocketClientImpl(trantor::EventLoop *loop,
+    WebSocketClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                         const trantor::InetAddress &addr,
                         bool useSSL = false,
                         bool useOldTLS = false,
                         bool validateCert = true);
 
-    WebSocketClientImpl(trantor::EventLoop *loop,
+    WebSocketClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                         const std::string &hostString,
                         bool useOldTLS = false,
                         bool validateCert = true);
@@ -78,7 +78,7 @@ class WebSocketClientImpl
 
   private:
     std::shared_ptr<trantor::TcpClient> tcpClientPtr_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     trantor::InetAddress serverAddr_;
     std::string domain_;
     bool useSSL_{false};

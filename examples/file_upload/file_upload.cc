@@ -31,13 +31,13 @@ int main()
             resp->setBody(
                 "The server has calculated the file's MD5 hash to be " + md5);
             file.save();
-            LOG_INFO << "The uploaded file has been saved to the ./uploads "
+            InfoL << "The uploaded file has been saved to the ./uploads "
                         "directory";
             callback(resp);
         },
         {Post});
 
-    LOG_INFO << "Server running on 127.0.0.1:8848";
+    InfoL << "Server running on 127.0.0.1:8848";
     app()
         .setClientMaxBodySize(20 * 2000 * 2000)
         .setUploadPath("./uploads")

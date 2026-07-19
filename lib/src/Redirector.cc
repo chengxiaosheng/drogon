@@ -83,5 +83,5 @@ void Redirector::initAndStart(const Json::Value &config)
 
 void Redirector::shutdown()
 {
-    LOG_TRACE << "Redirector plugin is shutdown!";
+    TraceL << "Redirector plugin is shutdown!";
 }

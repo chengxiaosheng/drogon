@@ -174,7 +174,7 @@ class User : public drogon::HttpController<User>
   public:
     User()
     {
-        LOG_DEBUG << "User constructor!";
+        DebugL << "User constructor!";
     }
 };
 } // namespace v1

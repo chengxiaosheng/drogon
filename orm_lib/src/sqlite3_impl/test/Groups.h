@@ -12,7 +12,7 @@
 #include <drogon/orm/SqlBinder.h>
 #include <drogon/orm/Mapper.h>
 #include <trantor/utils/Date.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <json/json.h>
 #include <string>
 #include <memory>
@@ -406,7 +406,7 @@ class Groups
             sql.resize(sql.length() - 1);
         }
         sql.append(1, ')');
-        LOG_TRACE << sql;
+        TraceL << sql;
         return sql;
     }
 };

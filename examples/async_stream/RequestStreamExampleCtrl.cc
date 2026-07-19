@@ -15,7 +15,7 @@ class StreamEchoReader : public RequestStreamReader
 
     void onStreamData(const char *data, size_t length) override
     {
-        LOG_INFO << "onStreamData[" << length << "]";
+        InfoL << "onStreamData[" << length << "]";
         respStream_->send({data, length});
     }
 
@@ -29,12 +29,12 @@ class StreamEchoReader : public RequestStreamReader
             }
             catch (const std::exception &e)
             {
-                LOG_ERROR << "onStreamError: " << e.what();
+                ErrorL << "onStreamError: " << e.what();
             }
         }
         else
         {
-            LOG_INFO << "onStreamFinish";
+            InfoL << "onStreamFinish";
         }
         respStream_->close();
     }
@@ -82,7 +82,7 @@ class RequestStreamExampleCtrl : public HttpController<RequestStreamExampleCtrl>
         auto reader = RequestStreamReader::newMultipartReader(
             req,
             [files](MultipartHeader &&header) {
-                LOG_INFO << "Multipart name: " << header.name
+                InfoL << "Multipart name: " << header.name
                          << ", filename:" << header.filename
                          << ", contentType:" << header.contentType;
 
@@ -103,7 +103,7 @@ class RequestStreamExampleCtrl : public HttpController<RequestStreamExampleCtrl>
                 auto &currentFile = files->back().file;
                 if (length == 0)
                 {
-                    LOG_INFO << "file finish";
+                    InfoL << "file finish";
                     if (currentFile.is_open())
                     {
                         currentFile.flush();
@@ -111,15 +111,15 @@ class RequestStreamExampleCtrl : public HttpController<RequestStreamExampleCtrl>
                     }
                     return;
                 }
-                LOG_INFO << "data[" << length << "]: ";
+                InfoL << "data[" << length << "]: ";
                 if (currentFile.is_open())
                 {
-                    LOG_INFO << "write file";
+                    InfoL << "write file";
                     currentFile.write(data, length);
                 }
                 else
                 {
-                    LOG_ERROR << "file not open";
+                    ErrorL << "file not open";
                 }
             },
             [files, callback = std::move(callback)](std::exception_ptr ex) {
@@ -131,11 +131,11 @@ class RequestStreamExampleCtrl : public HttpController<RequestStreamExampleCtrl>
                     }
                     catch (const StreamError &e)
                     {
-                        LOG_ERROR << "stream error: " << e.what();
+                        ErrorL << "stream error: " << e.what();
                     }
                     catch (const std::exception &e)
                     {
-                        LOG_ERROR << "multipart error: " << e.what();
+                        ErrorL << "multipart error: " << e.what();
                     }
                     auto resp = HttpResponse::newHttpResponse();
                     resp->setStatusCode(k400BadRequest);
@@ -144,7 +144,7 @@ class RequestStreamExampleCtrl : public HttpController<RequestStreamExampleCtrl>
                 }
                 else
                 {
-                    LOG_INFO << "stream finish, received " << files->size()
+                    InfoL << "stream finish, received " << files->size()
                              << " files";
                     Json::Value respJson;
                     for (const auto &item : *files)

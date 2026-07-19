@@ -123,7 +123,7 @@ DROGON_TEST(CroutineBasics)
         CHECK(val == 42);
     });
     async_run([TEST_CTX]() -> Task<void> {
-        co_await queueInLoopCoro<void>(app().getLoop(), []() { LOG_DEBUG; });
+        co_await queueInLoopCoro<void>(app().getLoop(), []() { DebugL; });
     });
 }
 

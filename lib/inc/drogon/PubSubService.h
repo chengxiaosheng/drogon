@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <functional>
 #include <mutex>
 #include <shared_mutex>
@@ -32,7 +32,7 @@ using SubscriberID = uint64_t;
  * @tparam MessageType
  */
 template <typename MessageType>
-class Topic : public trantor::NonCopyable
+class Topic : public toolkit::noncopyable
 {
   public:
     using MessageHandler = std::function<void(const MessageType &)>;
@@ -126,7 +126,7 @@ class Topic : public trantor::NonCopyable
  * @tparam MessageType The message type.
  */
 template <typename MessageType>
-class PubSubService : public trantor::NonCopyable
+class PubSubService : public toolkit::noncopyable
 {
   public:
     using MessageHandler =

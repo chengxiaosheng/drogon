@@ -20,7 +20,7 @@ namespace drogon
 {
 using PluginBasePtr = std::shared_ptr<PluginBase>;
 
-class PluginsManager : trantor::NonCopyable
+class PluginsManager : toolkit::noncopyable
 {
   public:
     void initializeAllPlugins(

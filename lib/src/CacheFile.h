@@ -14,14 +14,15 @@
 
 #pragma once
 
-#include <trantor/utils/NonCopyable.h>
+#include "Util/util.h"
+
 #include <string>
 #include <string_view>
 #include <stdio.h>
 
 namespace drogon
 {
-class CacheFile : public trantor::NonCopyable
+class CacheFile : public toolkit::noncopyable
 {
   public:
     explicit CacheFile(const std::string &path, bool autoDelete = true);

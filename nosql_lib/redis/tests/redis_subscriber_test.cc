@@ -24,14 +24,14 @@ DROGON_TEST(RedisSubscriberTest)
                           [](const std::string &channel,
                              const std::string &message) {
                               ++nMsgRecv;
-                              LOG_INFO << "Channel test_sub receive "
+                              InfoL << "Channel test_sub receive "
                                        << nMsgRecv << " messages: " << message;
                           });
     subscriber->psubscribe("test_*",
                            [](const std::string &channel,
                               const std::string &message) {
                                ++nPmsgRecv;
-                               LOG_INFO << "Channel " << channel << " receive "
+                               InfoL << "Channel " << channel << " receive "
                                         << nPmsgRecv
                                         << " pmessages: " << message;
                            });
@@ -45,7 +45,7 @@ DROGON_TEST(RedisSubscriberTest)
             },
             [TEST_CTX](const std::exception &err) {
                 MANDATE(err.what());
-                LOG_ERROR << err.what();
+                ErrorL << err.what();
                 ++nMsgSent;
             },
             "publish %s %s%d",
@@ -98,7 +98,7 @@ DROGON_TEST(RedisSubscriberTest)
 int main(int argc, char **argv)
 {
 #ifndef USE_REDIS
-    LOG_DEBUG << "Drogon is built without "
+    DebugL << "Drogon is built without "
                  "Redis. No tests executed.";
     return 0;
 #endif

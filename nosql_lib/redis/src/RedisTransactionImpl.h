@@ -37,7 +37,7 @@ class RedisTransactionImpl final
 
     std::shared_ptr<RedisSubscriber> newSubscriber() noexcept override
     {
-        LOG_ERROR << "You can't create subscriber from redis transaction";
+        ErrorL << "You can't create subscriber from redis transaction";
         assert(0);
         return nullptr;
     }

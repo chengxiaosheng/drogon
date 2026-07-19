@@ -13,6 +13,6 @@ class CoroFilter : public drogon::HttpCoroFilter<CoroFilter>
 
     CoroFilter()
     {
-        LOG_DEBUG << "CoroFilter constructor";
+        DebugL << "CoroFilter constructor";
     }
 };

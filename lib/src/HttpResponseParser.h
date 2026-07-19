@@ -15,7 +15,7 @@
 #pragma once
 
 #include "impl_forwards.h"
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 #include <trantor/net/TcpConnection.h>
 #include <trantor/utils/MsgBuffer.h>
 #include <list>
@@ -23,7 +23,7 @@
 
 namespace drogon
 {
-class HttpResponseParser : public trantor::NonCopyable
+class HttpResponseParser : public toolkit::noncopyable
 {
   public:
     enum class HttpResponseParseStatus

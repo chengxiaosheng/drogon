@@ -48,7 +48,7 @@ Result makeResult(std::shared_ptr<MYSQL_RES> &&r = nullptr,
 }  // namespace orm
 }  // namespace drogon
 
-MysqlConnection::MysqlConnection(trantor::EventLoop *loop,
+MysqlConnection::MysqlConnection(const std::shared_ptr<toolkit::EventPoller> &loop,
                                  const std::string &connInfo)
     : DbConnection(loop),
       mysqlPtr_(std::shared_ptr<MYSQL>(new MYSQL, [](MYSQL *p) {
@@ -74,7 +74,7 @@ MysqlConnection::MysqlConnection(trantor::EventLoop *loop,
                        key.end(),
                        key.begin(),
                        [](unsigned char c) { return tolower(c); });
-        // LOG_TRACE << key << "=" << value;
+        // TraceL << key << "=" << value;
         if (key == "host")
         {
             host_ = value;
@@ -85,7 +85,7 @@ MysqlConnection::MysqlConnection(trantor::EventLoop *loop,
         }
         else if (key == "dbname")
         {
-            // LOG_DEBUG << "database:[" << value << "]";
+            // DebugL << "database:[" << value << "]";
             dbname_ = value;
         }
         else if (key == "port")
@@ -105,7 +105,7 @@ MysqlConnection::MysqlConnection(trantor::EventLoop *loop,
 
 void MysqlConnection::init()
 {
-    loop_->queueInLoop([this]() {
+    loop_->async([this]() {
         MYSQL *ret;
         status_ = ConnectStatus::Connecting;
         waitStatus_ =
@@ -120,11 +120,11 @@ void MysqlConnection::init()
                                      port_.empty() ? 3306 : atol(port_.c_str()),
                                      nullptr,
                                      0);
-        // LOG_DEBUG << ret;
+        // DebugL << ret;
         auto fd = mysql_get_socket(mysqlPtr_.get());
         if (fd < 0)
         {
-            LOG_ERROR << "Connection with MySQL could not be established";
+            ErrorL << "Connection with MySQL could not be established";
             if (closeCallback_)
             {
                 auto thisPtr = shared_from_this();
@@ -157,15 +157,15 @@ void MysqlConnection::setChannel()
     }
     if (waitStatus_ & MYSQL_WAIT_TIMEOUT)
     {
-        auto timeout = mysql_get_timeout_value(mysqlPtr_.get());
+        auto timeout = mysql_get_timeout_value_ms(mysqlPtr_.get());
         auto thisPtr = shared_from_this();
-        loop_->runAfter(timeout, [thisPtr]() { thisPtr->handleTimeout(); });
+        loop_->doDelayTask(timeout, [thisPtr]() { thisPtr->handleTimeout(); return 0; });
     }
 }
 
 void MysqlConnection::handleClosed()
 {
-    loop_->assertInLoopThread();
+    // loop_->assertInLoopThread();
     if (status_ == ConnectStatus::Bad)
         return;
     status_ = ConnectStatus::Bad;
@@ -181,7 +181,7 @@ void MysqlConnection::disconnect()
     auto thisPtr = shared_from_this();
     std::promise<int> pro;
     auto f = pro.get_future();
-    loop_->runInLoop([thisPtr, &pro]() {
+    loop_->async([thisPtr, &pro]() {
         thisPtr->status_ = ConnectStatus::Bad;
         thisPtr->channelPtr_->disableAll();
         thisPtr->channelPtr_->remove();
@@ -204,9 +204,9 @@ void MysqlConnection::handleTimeout()
             auto errorNo = mysql_errno(mysqlPtr_.get());
             if (!ret && errorNo)
             {
-                LOG_ERROR << "Error(" << errorNo << ") \""
+                ErrorL << "Error(" << errorNo << ") \""
                           << mysql_error(mysqlPtr_.get()) << "\"";
-                LOG_ERROR << "Failed to mysql_real_connect()";
+                ErrorL << "Failed to mysql_real_connect()";
                 handleClosed();
                 return;
             }
@@ -245,13 +245,13 @@ void MysqlConnection::handleCmd(int status)
         {
             int err = 0;
             waitStatus_ = mysql_real_query_cont(&err, mysqlPtr_.get(), status);
-            LOG_TRACE << "real_query:" << waitStatus_;
+            TraceL << "real_query:" << waitStatus_;
             if (waitStatus_ == 0)
             {
                 if (err)
                 {
                     execStatus_ = ExecStatus::None;
-                    LOG_ERROR << "error:" << err << " status:" << status;
+                    ErrorL << "error:" << err << " status:" << status;
                     outputError();
                     return;
                 }
@@ -265,13 +265,13 @@ void MysqlConnection::handleCmd(int status)
             MYSQL_RES *ret;
             waitStatus_ =
                 mysql_store_result_cont(&ret, mysqlPtr_.get(), status);
-            LOG_TRACE << "store_result:" << waitStatus_;
+            TraceL << "store_result:" << waitStatus_;
             if (waitStatus_ == 0)
             {
                 if (!ret && mysql_errno(mysqlPtr_.get()))
                 {
                     execStatus_ = ExecStatus::None;
-                    LOG_ERROR << "error";
+                    ErrorL << "error";
                     outputError();
                     return;
                 }
@@ -289,7 +289,7 @@ void MysqlConnection::handleCmd(int status)
                 if (err)
                 {
                     execStatus_ = ExecStatus::None;
-                    LOG_ERROR << "error:" << err << " status:" << status;
+                    ErrorL << "error:" << err << " status:" << status;
                     outputError();
                     return;
                 }
@@ -330,9 +330,9 @@ void MysqlConnection::handleEvent()
             auto errorNo = mysql_errno(mysqlPtr_.get());
             if (!ret && errorNo)
             {
-                LOG_ERROR << "Error(" << errorNo << ") \""
+                ErrorL << "Error(" << errorNo << ") \""
                           << mysql_error(mysqlPtr_.get()) << "\"";
-                LOG_ERROR << "Failed to mysql_real_connect()";
+                ErrorL << "Failed to mysql_real_connect()";
                 handleClosed();
                 return;
             }
@@ -371,9 +371,9 @@ void MysqlConnection::continueSetCharacterSet(int status)
     {
         if (err)
         {
-            LOG_ERROR << "Error(" << err << ") \""
+            ErrorL << "Error(" << err << ") \""
                       << mysql_error(mysqlPtr_.get()) << "\"";
-            LOG_ERROR << "Failed to mysql_set_character_set_cont()";
+            ErrorL << "Failed to mysql_set_character_set_cont()";
             handleClosed();
             return;
         }
@@ -397,9 +397,9 @@ void MysqlConnection::startSetCharacterSet()
     {
         if (err)
         {
-            LOG_ERROR << "Error(" << err << ") \""
+            ErrorL << "Error(" << err << ") \""
                       << mysql_error(mysqlPtr_.get()) << "\"";
-            LOG_ERROR << "Failed to mysql_set_character_set_start()";
+            ErrorL << "Failed to mysql_set_character_set_start()";
             handleClosed();
             return;
         }
@@ -426,7 +426,7 @@ void MysqlConnection::execSqlInLoop(
     ResultCallback &&rcb,
     std::function<void(const std::exception_ptr &)> &&exceptCallback)
 {
-    LOG_TRACE << sql;
+    TraceL << sql;
     assert(paraNum == parameters.size());
     assert(paraNum == length.size());
     assert(paraNum == format.size());
@@ -435,7 +435,7 @@ void MysqlConnection::execSqlInLoop(
     assert(!sql.empty());
     if (status_ != ConnectStatus::Ok)
     {
-        LOG_ERROR << "Connection is not ready";
+        ErrorL << "Connection is not ready";
         auto exceptPtr =
             std::make_exception_ptr(drogon::orm::BrokenConnection());
         exceptCallback(exceptPtr);
@@ -516,7 +516,7 @@ void MysqlConnection::execSqlInLoop(
                         sql_.append("default");
                         break;
                     default:
-                        LOG_FATAL
+                        ErrorL
                             << "MySQL does not recognize the parameter type";
                         abort();
                         break;
@@ -541,9 +541,9 @@ void MysqlConnection::outputError()
 {
     channelPtr_->disableAll();
     auto errorNo = mysql_errno(mysqlPtr_.get());
-    LOG_ERROR << "Error(" << errorNo << ") [" << mysql_sqlstate(mysqlPtr_.get())
+    ErrorL << "Error(" << errorNo << ") [" << mysql_sqlstate(mysqlPtr_.get())
               << "] \"" << mysql_error(mysqlPtr_.get()) << "\"";
-    LOG_ERROR << "sql:" << sql_;
+    ErrorL << "sql:" << sql_;
     if (isWorking_)
     {
         // TODO: exception type
@@ -574,14 +574,14 @@ void MysqlConnection::startQuery()
                                          mysqlPtr_.get(),
                                          sql_.c_str(),
                                          sql_.length());
-    LOG_TRACE << "real_query:" << waitStatus_;
+    TraceL << "real_query:" << waitStatus_;
     execStatus_ = ExecStatus::RealQuery;
     if (waitStatus_ == 0)
     {
         if (err)
         {
-            LOG_ERROR << "error";
-            loop_->queueInLoop(
+            ErrorL << "error";
+            loop_->async(
                 [thisPtr = shared_from_this()] { thisPtr->outputError(); });
             return;
         }
@@ -594,7 +594,7 @@ void MysqlConnection::startStoreResult(bool queueInLoop)
     MYSQL_RES *ret;
     execStatus_ = ExecStatus::StoreResult;
     waitStatus_ = mysql_store_result_start(&ret, mysqlPtr_.get());
-    LOG_TRACE << "store_result:" << waitStatus_;
+    TraceL << "store_result:" << waitStatus_;
     if (waitStatus_ == 0)
     {
         execStatus_ = ExecStatus::None;
@@ -602,8 +602,8 @@ void MysqlConnection::startStoreResult(bool queueInLoop)
         {
             if (queueInLoop)
             {
-                loop_->queueInLoop(
-                    [thisPtr = shared_from_this()] { thisPtr->outputError(); });
+                loop_->async(
+                    [thisPtr = shared_from_this()] { thisPtr->outputError(); }, false);
             }
             else
             {
@@ -613,9 +613,9 @@ void MysqlConnection::startStoreResult(bool queueInLoop)
         }
         if (queueInLoop)
         {
-            loop_->queueInLoop([thisPtr = shared_from_this(), ret] {
+            loop_->async([thisPtr = shared_from_this(), ret] {
                 thisPtr->getResult(ret);
-            });
+            }, false);
         }
         else
         {
@@ -652,7 +652,7 @@ void MysqlConnection::getResult(MYSQL_RES *res)
                 if (err)
                 {
                     execStatus_ = ExecStatus::None;
-                    LOG_ERROR << "error:" << err;
+                    ErrorL << "error:" << err;
                     outputError();
                     return;
                 }

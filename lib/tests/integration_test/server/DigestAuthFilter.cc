@@ -190,18 +190,18 @@ void DigestAuthFilter::doFilter(const HttpRequestPtr &req,
                 }
                 else
                 {
-                    LOG_DEBUG << "invalid response " << response
+                    DebugL << "invalid response " << response
                               << ", calculated " << calculated_response;
                 }
             }
             else
             {
-                LOG_DEBUG << "invalid username " << username;
+                DebugL << "invalid username " << username;
             }
         }
         else
         {
-            LOG_DEBUG << "missing attributes in WWW-Authenticate header"
+            DebugL << "missing attributes in WWW-Authenticate header"
                       << auth_header;
         }
     }

@@ -19,22 +19,21 @@
 using namespace drogon::orm;
 using namespace drogon;
 
-void DbClientManager::createDbClients(
-    const std::vector<trantor::EventLoop *> & /*ioLoops*/)
+void DbClientManager::createDbClients()
 {
     return;
 }
 
 void DbClientManager::addDbClient(const DbConfig &)
 {
-    LOG_FATAL << "No database is supported by drogon, please install the "
+    ErrorL << "No database is supported by drogon, please install the "
                  "database development library first.";
     abort();
 }
 
 bool DbClientManager::areAllDbClientsAvailable() const noexcept
 {
-    LOG_FATAL << "No database is supported by drogon, please install the "
+    ErrorL << "No database is supported by drogon, please install the "
                  "database development library first.";
     abort();
 }

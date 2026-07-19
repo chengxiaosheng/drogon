@@ -16,7 +16,6 @@
 
 #include "DbConnection.h"
 #include <drogon/orm/DbClient.h>
-#include <trantor/net/EventLoopThreadPool.h>
 #include <functional>
 #include <list>
 #include <memory>
@@ -71,13 +70,13 @@ class DbClientImpl : public DbClient,
 
   private:
     size_t numberOfConnections_;
-    trantor::EventLoopThreadPool loops_;
+    // trantor::EventLoopThreadPool loops_;
     std::shared_ptr<SharedMutex> sharedMutexPtr_;
     double timeout_{-1.0};
 #if LIBPQ_SUPPORTS_BATCH_MODE
     bool autoBatch_{false};
 #endif
-    DbConnectionPtr newConnection(trantor::EventLoop *loop);
+    DbConnectionPtr newConnection(const std::shared_ptr<toolkit::EventPoller> &loop);
 
     void makeTrans(
         const DbConnectionPtr &conn,

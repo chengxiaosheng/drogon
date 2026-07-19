@@ -1,5 +1,6 @@
 #include <drogon/drogon_test.h>
 
+#include <cassert>
 #include <set>
 #include <future>
 #include <condition_variable>
@@ -218,7 +219,7 @@ int run(int argc, char **argv)
             auto test = std::dynamic_pointer_cast<TestCase>(obj);
             if (test == nullptr)
             {
-                LOG_WARN << "Class " << name
+                WarnL << "Class " << name
                          << " seems to be a test case. But type information "
                             "disagrees.";
                 continue;

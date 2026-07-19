@@ -15,13 +15,13 @@
 #pragma once
 
 #include <drogon/orm/Result.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/util.h>
 
 namespace drogon
 {
 namespace orm
 {
-class ResultImpl : public trantor::NonCopyable
+class ResultImpl : public toolkit::noncopyable
 {
   public:
     ResultImpl() = default;

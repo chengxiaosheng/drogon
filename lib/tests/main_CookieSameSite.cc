@@ -4,7 +4,7 @@
 #include <drogon/HttpController.h>
 #include <drogon/Cookie.h>
 
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 
 using namespace drogon;
 using namespace trantor;
@@ -29,7 +29,7 @@ class CookieSameSiteController
             old_session_same_site =
                 req->session()->get<std::string>(SESSION_SAME_SITE);
         }
-        LOG_INFO << "Server: new sameSite == " << newSameSite
+        InfoL << "Server: new sameSite == " << newSameSite
                  << ", old sameSite == " << old_session_same_site;
         drogon::HttpAppFramework::instance().enableSession(
             0, Cookie::convertString2SameSite(newSameSite));

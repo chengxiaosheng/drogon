@@ -13,8 +13,8 @@
  */
 #pragma once
 
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/net/EventLoop.h>
+#include <Util/util.h>
+#include <Poller/EventPoller.h>
 #include <chrono>
 #include <functional>
 #include <atomic>
@@ -22,11 +22,11 @@
 
 namespace drogon
 {
-class TaskTimeoutFlag : public trantor::NonCopyable,
+class TaskTimeoutFlag : public toolkit::noncopyable,
                         public std::enable_shared_from_this<TaskTimeoutFlag>
 {
   public:
-    TaskTimeoutFlag(trantor::EventLoop *loop,
+    TaskTimeoutFlag(const std::shared_ptr<toolkit::EventPoller> &loop,
                     const std::chrono::duration<double> &timeout,
                     std::function<void()> timeoutCallback);
     bool done();
@@ -34,7 +34,7 @@ class TaskTimeoutFlag : public trantor::NonCopyable,
 
   private:
     std::atomic<bool> isDone_{false};
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     std::chrono::duration<double> timeout_;
     std::function<void()> timeoutFunc_;
 };

@@ -23,8 +23,8 @@
 #include <drogon/orm/RowIterator.h>
 #include <string_view>
 #include <json/writer.h>
-#include <trantor/utils/Logger.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/logger.h>
+#include <Util/util.h>
 #include <json/json.h>
 #include <functional>
 #include <iostream>
@@ -289,7 +289,7 @@ class CallbackHolder : public CallbackHolderBase
     }
 };
 
-class DROGON_EXPORT SqlBinder : public trantor::NonCopyable
+class DROGON_EXPORT SqlBinder : public toolkit::noncopyable
 {
     using self = SqlBinder;
 
@@ -358,7 +358,7 @@ class DROGON_EXPORT SqlBinder : public trantor::NonCopyable
         {
             if constexpr (traits::isPtr)
             {
-                // LOG_DEBUG << "ptr callback";
+                // DebugL << "ptr callback";
                 isExceptionPtr_ = true;
                 exceptionPtrCallback_ = std::forward<CallbackType>(callback);
                 return *this;
@@ -439,7 +439,7 @@ class DROGON_EXPORT SqlBinder : public trantor::NonCopyable
                     break;
             }
         }
-        // LOG_TRACE << "Bind parameter:" << parameter;
+        // TraceL << "Bind parameter:" << parameter;
         return *this;
     }
 

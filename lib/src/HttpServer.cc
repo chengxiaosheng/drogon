@@ -15,7 +15,7 @@
 #include "HttpServer.h"
 #include <drogon/HttpResponse.h>
 #include <drogon/utils/Utilities.h>
-#include <trantor/utils/Logger.h>
+#include <Util/logger.h>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -99,7 +99,7 @@ void HttpServer::start()
     {
         server_.setAfterAcceptSockOptCallback(afterAcceptSetSockOptCallback_);
     }
-    LOG_TRACE << "HttpServer[" << server_.name() << "] starts listening on "
+    TraceL << "HttpServer[" << server_.name() << "] starts listening on "
               << server_.ipPort();
     server_.start();
 }
@@ -118,7 +118,7 @@ void HttpServer::onConnection(const TcpConnectionPtr &conn)
         conn->setContext(parser);
         if (!HttpConnectionLimit::instance().tryAddConnection(conn))
         {
-            LOG_ERROR << "too much connections!force close!";
+            ErrorL << "too much connections!force close!";
             conn->forceClose();
             return;
         }
@@ -129,7 +129,7 @@ void HttpServer::onConnection(const TcpConnectionPtr &conn)
     }
     else if (conn->disconnected())
     {
-        LOG_TRACE << "conn disconnected!";
+        TraceL << "conn disconnected!";
         auto requestParser = conn->getContext<HttpRequestParser>();
         if (requestParser)
         {
@@ -413,10 +413,10 @@ void HttpServer::onHttpRequest(
     const HttpRequestImplPtr &req,
     std::function<void(const HttpResponsePtr &)> &&callback)
 {
-    LOG_TRACE << "new request:" << req->peerAddr().toIpPort() << "->"
+    TraceL << "new request:" << req->peerAddr().toIpPort() << "->"
               << req->localAddr().toIpPort();
-    LOG_TRACE << "Headers " << req->methodString() << " " << req->path();
-    LOG_TRACE << "http path=" << req->path();
+    TraceL << "Headers " << req->methodString() << " " << req->path();
+    TraceL << "http path=" << req->path();
     if (req->method() == Options && (req->path() == "*" || req->path() == "/*"))
     {
         auto resp = HttpResponse::newHttpResponse();
@@ -488,7 +488,7 @@ void HttpServer::requestPostRouting(const HttpRequestImplPtr &req, Pack &&pack)
     if (req->streamStatus() >= ReqStreamStatus::Open &&
         !pack.binderPtr->isStreamHandler())
     {
-        LOG_TRACE << "Wait for request stream finish";
+        TraceL << "Wait for request stream finish";
         if (req->streamStatus() == ReqStreamStatus::Finish)
         {
             req->quitStreamMode();
@@ -516,7 +516,7 @@ void HttpServer::requestPostRouting(const HttpRequestImplPtr &req, Pack &&pack)
                 else
                 {
                     req->quitStreamMode();
-                    LOG_ERROR << "Stop processing request due to stream error";
+                    ErrorL << "Stop processing request due to stream error";
                     pack.callback(
                         app().getCustomErrorHandler()(k400BadRequest, req));
                 }
@@ -652,7 +652,7 @@ void HttpServer::httpRequestHandling(
                  static_cast<double>(cachedResp->expiredTime()))))
         {
             // use cached response!
-            LOG_TRACE << "Use cached response";
+            TraceL << "Use cached response";
 
             // post-handling aop
             AopAdvice::instance().passPostHandlingAdvices(req, cachedResp);
@@ -788,7 +788,7 @@ void HttpServer::handleResponse(
 
     if (paramPack->responseSent_.exchange(true, std::memory_order_acq_rel))
     {
-        LOG_ERROR << "Sending more than 1 response for request. "
+        ErrorL << "Sending more than 1 response for request. "
                      "Ignoring later response";
         return;
     }
@@ -878,7 +878,7 @@ static std::size_t chunkingCallback(
     // Cleanup
     if (pBuffer == nullptr)
     {
-        LOG_TRACE << "Chunking callback cleanup";
+        TraceL << "Chunking callback cleanup";
         if (cbParams && cbParams->dataCallback)
         {
             cbParams->dataCallback(pBuffer, nSize);
@@ -889,9 +889,9 @@ static std::size_t chunkingCallback(
     // Terminal chunk already returned
     if (cbParams->bFinished)
     {
-        LOG_TRACE << "Chunking callback has no more data";
+        TraceL << "Chunking callback has no more data";
 #ifndef NDEBUG  // defined by CMake for release build
-        LOG_TRACE << "Chunking callback: total data returned: "
+        TraceL << "Chunking callback: total data returned: "
                   << cbParams->nDataReturned << " bytes";
 #endif
         return 0;
@@ -918,7 +918,7 @@ static std::size_t chunkingCallback(
 #else
         memcpy(pBuffer, "0\r\n\r\n", 5);
 #endif
-        LOG_TRACE << "Chunking callback: no more data, return last chunk of "
+        TraceL << "Chunking callback: no more data, return last chunk of "
                      "size 0 & end of message";
         return 5;
     }
@@ -936,7 +936,7 @@ static std::size_t chunkingCallback(
     pszFormat[2] = '0' + char(nHeaderSize - 2);
     snprintf(pBuffer, nHeaderSize, pszFormat, nDataSize);
     pBuffer[nHeaderSize - 1] = '\n';
-    LOG_TRACE << "Chunking callback: return chunk of size " << nDataSize;
+    TraceL << "Chunking callback: return chunk of size " << nDataSize;
 #ifndef NDEBUG  // defined by CMake for release build
     cbParams->nDataReturned += nDataSize;
 #endif
@@ -993,7 +993,7 @@ void HttpServer::sendResponse(const TcpConnectionPtr &conn,
             }
             else
             {
-                LOG_INFO << "Async stream not supported for HTTP/1.0";
+                InfoL << "Async stream not supported for HTTP/1.0";
             }
         }
         auto &streamCallback = respImplPtr->streamCallback();
@@ -1077,7 +1077,7 @@ void HttpServer::sendResponses(
                 }
                 else
                 {
-                    LOG_INFO << "Async stream not supported for HTTP/1.0";
+                    InfoL << "Async stream not supported for HTTP/1.0";
                 }
             }
             auto &streamCallback = respImplPtr->streamCallback();
@@ -1164,7 +1164,7 @@ static inline bool isWebSocket(const HttpRequestImplPtr &req)
     if (connectionField.find("upgrade") != std::string::npos &&
         upgradeField == "websocket")
     {
-        LOG_TRACE << "new websocket request";
+        TraceL << "new websocket request";
         return true;
     }
     return false;
@@ -1270,7 +1270,7 @@ static inline HttpResponsePtr getCompressedResponse(
         }
         else
         {
-            LOG_ERROR << "brotli got 0 length result";
+            ErrorL << "brotli got 0 length result";
         }
         return newResp;
     }
@@ -1296,7 +1296,7 @@ static inline HttpResponsePtr getCompressedResponse(
         }
         else
         {
-            LOG_ERROR << "gzip got 0 length result";
+            ErrorL << "gzip got 0 length result";
         }
         return newResp;
     }

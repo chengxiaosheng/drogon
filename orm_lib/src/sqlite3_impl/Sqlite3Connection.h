@@ -17,9 +17,7 @@
 #include "../DbConnection.h"
 #include "Sqlite3ResultImpl.h"
 #include <drogon/orm/DbClient.h>
-#include <trantor/net/EventLoopThread.h>
-#include <trantor/utils/NonCopyable.h>
-#include <trantor/utils/SerialTaskQueue.h>
+#include <Util/util.h>
 #include <sqlite3.h>
 #include <functional>
 #include <iostream>
@@ -40,7 +38,7 @@ class Sqlite3Connection : public DbConnection,
                           public std::enable_shared_from_this<Sqlite3Connection>
 {
   public:
-    Sqlite3Connection(trantor::EventLoop *loop,
+    Sqlite3Connection(const std::shared_ptr<toolkit::EventPoller> &loop,
                       const std::string &connInfo,
                       const std::shared_ptr<SharedMutex> &sharedMutex);
 
@@ -57,7 +55,7 @@ class Sqlite3Connection : public DbConnection,
 
     void batchSql(std::deque<std::shared_ptr<SqlCmd>> &&) override
     {
-        LOG_FATAL << "The mysql library does not support batch mode";
+        ErrorL << "The mysql library does not support batch mode";
         exit(1);
     }
 
@@ -80,7 +78,6 @@ class Sqlite3Connection : public DbConnection,
     int stmtStep(sqlite3_stmt *stmt,
                  const std::shared_ptr<Sqlite3ResultImpl> &resultPtr,
                  int columnNum);
-    trantor::EventLoopThread loopThread_;
     std::shared_ptr<sqlite3> connectionPtr_;
     std::shared_ptr<SharedMutex> sharedMutexPtr_;
     std::unordered_map<std::string_view, std::shared_ptr<sqlite3_stmt>>

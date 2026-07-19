@@ -16,8 +16,8 @@
 #include <drogon/DrObject.h>
 #include <json/json.h>
 #include <memory>
-#include <trantor/utils/Logger.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Util/logger.h>
+#include <Util/util.h>
 
 namespace drogon
 {
@@ -33,7 +33,7 @@ enum class PluginStatus
  *
  */
 class DROGON_EXPORT PluginBase : public virtual DrObjectBase,
-                                 public trantor::NonCopyable
+                                 public toolkit::noncopyable
 {
   public:
     /// This method must be called by drogon.
@@ -57,7 +57,7 @@ class DROGON_EXPORT PluginBase : public virtual DrObjectBase,
         }
         else
         {
-            LOG_FATAL << "There are a circular dependency within plugins.";
+            ErrorL << "There are a circular dependency within plugins.";
             abort();
         }
     }

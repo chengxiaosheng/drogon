@@ -14,6 +14,8 @@
 
 #include "Sqlite3Connection.h"
 #include "Sqlite3ResultImpl.h"
+#include "drogon/HttpAppFramework.h"
+
 #include <drogon/orm/Exception.h>
 #include <drogon/utils/Utilities.h>
 #include <stdexcept>
@@ -79,7 +81,7 @@ void Sqlite3Connection::onError(
 }
 
 Sqlite3Connection::Sqlite3Connection(
-    trantor::EventLoop *loop,
+    const std::shared_ptr<toolkit::EventPoller> &loop,
     const std::string &connInfo,
     const std::shared_ptr<SharedMutex> &sharedMutex)
     : DbConnection(loop), sharedMutexPtr_(sharedMutex), connInfo_(connInfo)
@@ -88,13 +90,12 @@ Sqlite3Connection::Sqlite3Connection(
 
 void Sqlite3Connection::init()
 {
-    loopThread_.run();
-    loop_ = loopThread_.getLoop();
+    loop_ = drogon::app().getLoop();
     std::call_once(once_, []() {
         auto ret = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
         if (ret != SQLITE_OK)
         {
-            LOG_FATAL << "SQLITE_CONFIG_MULTITHREAD is not supported!";
+            ErrorL << "SQLITE_CONFIG_MULTITHREAD is not supported!";
         }
     });
     // Get the key and value
@@ -113,7 +114,7 @@ void Sqlite3Connection::init()
             filename = value;
         }
     }
-    loop_->runInLoop([this, filename = std::move(filename)]() {
+    loop_->async([this, filename = std::move(filename)]() {
         sqlite3 *tmp = nullptr;
         auto ret = sqlite3_open(filename.data(), &tmp);
         connectionPtr_ = std::shared_ptr<sqlite3>(tmp, [](sqlite3 *ptr) {
@@ -122,7 +123,7 @@ void Sqlite3Connection::init()
         auto thisPtr = shared_from_this();
         if (ret != SQLITE_OK)
         {
-            LOG_FATAL << sqlite3_errmsg(connectionPtr_.get());
+            ErrorL << sqlite3_errmsg(connectionPtr_.get());
             closeCallback_(thisPtr);
         }
         else
@@ -144,7 +145,7 @@ void Sqlite3Connection::execSql(
     std::function<void(const std::exception_ptr &)> &&exceptCallback)
 {
     auto thisPtr = shared_from_this();
-    loopThread_.getLoop()->queueInLoop(
+    loop_->async(
         [thisPtr,
          sql = std::move(sql),
          paraNum,
@@ -155,7 +156,7 @@ void Sqlite3Connection::execSql(
          exceptCallback = std::move(exceptCallback)]() mutable {
             thisPtr->execSqlInQueue(
                 sql, paraNum, parameters, length, format, rcb, exceptCallback);
-        });
+        }, false);
 }
 
 void Sqlite3Connection::execSqlInQueue(
@@ -167,10 +168,10 @@ void Sqlite3Connection::execSqlInQueue(
     const ResultCallback &rcb,
     const std::function<void(const std::exception_ptr &)> &exceptCallback)
 {
-    LOG_TRACE << "sql:" << sql;
+    TraceL << "sql:" << sql;
     if (status_ != ConnectStatus::Ok)
     {
-        LOG_ERROR << "Connection is not ready";
+        ErrorL << "Connection is not ready";
         auto exceptPtr =
             std::make_exception_ptr(drogon::orm::BrokenConnection());
         exceptCallback(exceptPtr);
@@ -255,7 +256,7 @@ void Sqlite3Connection::execSqlInQueue(
                 bindRet = sqlite3_bind_null(stmt, i + 1);
                 break;
             default:
-                LOG_FATAL << "SQLite does not recognize the parameter type";
+                ErrorL << "SQLite does not recognize the parameter type";
                 abort();
         }
         if (bindRet != SQLITE_OK)
@@ -277,7 +278,7 @@ void Sqlite3Connection::execSqlInQueue(
                        name.end(),
                        name.begin(),
                        [](unsigned char c) { return tolower(c); });
-        LOG_TRACE << "column name:" << name;
+        TraceL << "column name:" << name;
         resultPtr->columnNames_.push_back(name);
         resultPtr->columnNamesMap_.insert({name, i});
     }
@@ -379,7 +380,7 @@ void Sqlite3Connection::disconnect()
     auto f = pro.get_future();
     auto thisPtr = shared_from_this();
     std::weak_ptr<Sqlite3Connection> weakPtr = thisPtr;
-    loopThread_.getLoop()->runInLoop([weakPtr, &pro]() {
+    loop_->async([weakPtr, &pro]() {
         {
             auto thisPtr = weakPtr.lock();
             if (!thisPtr)

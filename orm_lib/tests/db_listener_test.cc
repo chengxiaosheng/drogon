@@ -39,21 +39,21 @@ DROGON_TEST(ListenNotifyTest)
                                       "listen_test_2"};
 
     static int numNotifications = 0;
-    LOG_INFO << "Start listen.";
+    InfoL << "Start listen.";
     for (auto &chan : channels)
     {
         dbListener->listen(chan,
                            [TEST_CTX, chan](const std::string &channel,
                                             const std::string &message) {
                                MANDATE(channel == chan);
-                               LOG_INFO << "Message from " << channel << ": "
+                               InfoL << "Message from " << channel << ": "
                                         << message;
                                ++numNotifications;
                            });
     }
 
     std::this_thread::sleep_for(1s);  // ensure listen success
-    LOG_INFO << "Start sending notifications.";
+    InfoL << "Start sending notifications.";
     for (int i = 0; i < 5; ++i)
     {
         for (auto &chan : channels)
@@ -64,16 +64,16 @@ DROGON_TEST(ListenNotifyTest)
             clientPtr->execSqlAsync(
                 cmd,
                 [i, chan](const orm::Result &result) {
-                    LOG_INFO << chan << " notified " << i;
+                    InfoL << chan << " notified " << i;
                 },
                 [](const orm::DrogonDbException &ex) {
-                    LOG_ERROR << "Failed to notify " << ex.base().what();
+                    ErrorL << "Failed to notify " << ex.base().what();
                 });
         }
     }
 
     std::this_thread::sleep_for(5s);
-    LOG_INFO << "Unlisten.";
+    InfoL << "Unlisten.";
     for (auto &chan : channels)
     {
         dbListener->unlisten(chan);
@@ -85,7 +85,7 @@ DROGON_TEST(ListenNotifyTest)
 
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(trantor::Logger::LogLevel::kDebug);
+    trantor::Logger::setLogLevel(toolkit::LogLevel::kDebug);
 
     std::string dbConnInfo;
     const char *dbUrl = std::getenv("DROGON_TEST_DB_CONN_INFO");
@@ -100,11 +100,11 @@ int main(int argc, char **argv)
             "password=12345 "
             "client_encoding=utf8";
     }
-    LOG_INFO << "Database conn info: " << dbConnInfo;
+    InfoL << "Database conn info: " << dbConnInfo;
 #if USE_POSTGRESQL
     postgreClient = orm::DbClient::newPgClient(dbConnInfo, 2, true);
 #else
-    LOG_DEBUG << "Drogon is built without Postgresql. No tests executed.";
+    DebugL << "Drogon is built without Postgresql. No tests executed.";
     return 0;
 #endif
 

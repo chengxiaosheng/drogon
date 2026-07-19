@@ -17,8 +17,8 @@
 #include <drogon/config.h>
 #include <drogon/orm/DbClient.h>
 #include <string_view>
-#include <trantor/net/EventLoop.h>
-#include <trantor/utils/NonCopyable.h>
+#include <Poller/EventPoller.h>
+#include <Util/util.h>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -79,12 +79,12 @@ struct SqlCmd
 class DbConnection;
 using DbConnectionPtr = std::shared_ptr<DbConnection>;
 
-class DbConnection : public trantor::NonCopyable
+class DbConnection : public toolkit::noncopyable
 {
   public:
     using DbConnectionCallback = std::function<void(const DbConnectionPtr &)>;
 
-    explicit DbConnection(trantor::EventLoop *loop) : loop_(loop)
+    explicit DbConnection(const std::shared_ptr<toolkit::EventPoller> &loop) : loop_(loop)
     {
     }
 
@@ -118,7 +118,7 @@ class DbConnection : public trantor::NonCopyable
 
     virtual ~DbConnection()
     {
-        LOG_TRACE << "Destruct DbConn " << this;
+        TraceL << "Destruct DbConn " << this;
     }
 
     ConnectStatus status() const
@@ -126,7 +126,7 @@ class DbConnection : public trantor::NonCopyable
         return status_;
     }
 
-    trantor::EventLoop *loop()
+    std::shared_ptr<toolkit::EventPoller> loop()
     {
         return loop_;
     }
@@ -140,7 +140,7 @@ class DbConnection : public trantor::NonCopyable
 
   protected:
     QueryCallback callback_;
-    trantor::EventLoop *loop_;
+    std::shared_ptr<toolkit::EventPoller> loop_;
     std::function<void()> idleCb_;
     ConnectStatus status_{ConnectStatus::None};
     DbConnectionCallback closeCallback_{[](const DbConnectionPtr &) {}};

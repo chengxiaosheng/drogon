@@ -14,6 +14,7 @@
 
 #pragma once
 #include <string>
+#include <drogon/HttpTypes.h>
 
 namespace drogon
 {

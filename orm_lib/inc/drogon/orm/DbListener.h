@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <Poller/EventPoller.h>
 #include <drogon/exports.h>
 #include <functional>
 #include <string>
@@ -48,7 +49,7 @@ class DROGON_EXPORT DbListener
      * @return nullptr if postgresql is not supported.
      */
     static DbListenerPtr newPgListener(const std::string &connInfo,
-                                       trantor::EventLoop *loop = nullptr);
+                                       const std::shared_ptr<toolkit::EventPoller> &loop = nullptr);
 
     /// Listen to a channel
     /**
