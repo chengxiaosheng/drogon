@@ -1,8 +1,7 @@
 #include <drogon/drogon_test.h>
 #include <drogon/utils/coroutine.h>
 #include <drogon/HttpAppFramework.h>
-#include <trantor/net/EventLoopThread.h>
-#include <trantor/net/EventLoopThreadPool.h>
+#include <Poller/EventPoller.h>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -119,11 +118,11 @@ DROGON_TEST(CroutineBasics)
     CHECK(testVar == 1);
     async_run([TEST_CTX]() -> Task<void> {
         auto val =
-            co_await asyncCoro<int>(app().getLoop(), []() { return 42; });
+            co_await queueInLoopCoro<int>(app().getLoop(), []() { return 42; });
         CHECK(val == 42);
     });
     async_run([TEST_CTX]() -> Task<void> {
-        co_await asyncCoro<void>(app().getLoop(), []() { DebugL; });
+        co_await queueInLoopCoro<void>(app().getLoop(), []() { DebugL; });
     });
 }
 
@@ -207,36 +206,40 @@ DROGON_TEST(AsyncWaitLifetime)
 
 DROGON_TEST(SwitchThread)
 {
-    trantor::EventLoopThread thread;
-    thread.getLoop()->setIndex(12345);
-    thread.run();
+    // Use EventPollerPool to get pollers at different indices
+    auto& pool = toolkit::EventPollerPool::Instance();
+    auto poller = pool.getPoller(false);  // Get any poller, not necessarily current thread
 
-    auto switch_thread = [TEST_CTX, &thread]() -> Task<> {
-        co_await switchThreadCoro(thread.getLoop());
-        auto currentLoop = trantor::EventLoop::getEventLoopOfCurrentThread();
-        MANDATE(currentLoop != nullptr);
-        CHECK(currentLoop->index() == 12345);
-        currentLoop->quit();
+    auto switch_thread = [TEST_CTX, poller]() -> Task<> {
+        co_await switchThreadCoro(poller);
+        auto currentPoller = toolkit::EventPoller::getCurrentPoller();
+        MANDATE(currentPoller != nullptr);
+        CHECK(currentPoller->index() == poller->index());
     };
     sync_wait(switch_thread());
-    thread.wait();
 }
 
 DROGON_TEST(Mutex)
 {
-    trantor::EventLoopThreadPool pool{3};
-    pool.start();
+    // Use EventPollerPool to get multiple pollers
+    auto& pool = toolkit::EventPollerPool::Instance();
+    toolkit::EventPollerPool::setPoolSize(3);  // Ensure we have at least 3 pollers
+
+    auto poller0 = pool[0];
+    auto poller1 = pool[1];
+    auto poller2 = pool[2];
+
     Mutex mutex;
     async_run([&]() -> Task<> {
-        co_await switchThreadCoro(pool.getLoop(0));
+        co_await switchThreadCoro(poller0);
         auto guard = co_await mutex.scoped_lock();
-        co_await sleepCoro(pool.getLoop(1), std::chrono::seconds(2));
+        co_await sleepCoro(poller1, std::chrono::seconds(2));
         co_return;
     });
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::promise<void> done;
     async_run([&]() -> Task<> {
-        co_await switchThreadCoro(pool.getLoop(2));
+        co_await switchThreadCoro(poller2);
         auto id = std::this_thread::get_id();
         co_await mutex.lock();
         CHECK(id == std::this_thread::get_id());
@@ -246,9 +249,6 @@ DROGON_TEST(Mutex)
         co_return;
     });
     done.get_future().wait();
-    for (int16_t i = 0; i < 3; i++)
-        pool.getLoop(i)->quit();
-    pool.wait();
 }
 
 DROGON_TEST(WhenAll)

@@ -106,7 +106,7 @@ class RealIpController : public drogon::HttpController<RealIpController>
 // -- main
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(trantor::Logger::kInfo);
+    toolkit::Logger::Instance().setLevel(toolkit::LInfo);
     std::promise<void> p1;
     std::future<void> f1 = p1.get_future();
 

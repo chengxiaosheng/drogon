@@ -3,7 +3,6 @@
 #include <drogon/HttpAppFramework.h>
 
 using namespace drogon;
-using namespace trantor;
 
 DROGON_TEST(TestFrameworkSelfTest)
 {
@@ -46,7 +45,7 @@ int main(int argc, char **argv)
 
     f1.get();
     int testStatus = test::run(argc, argv);
-    app().getLoop()->queueInLoop([]() { app().quit(); });
+    app().getLoop()->async([]() { app().quit(); });
     thr.join();
     return testStatus;
 }

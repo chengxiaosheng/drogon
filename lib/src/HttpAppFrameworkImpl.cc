@@ -542,13 +542,9 @@ HttpAppFramework &HttpAppFrameworkImpl::reloadSSLFiles()
 
 void HttpAppFrameworkImpl::run()
 {
-    if (!getLoop()->isCurrentThread())
-    {
-        getLoop()->async([]() {
-           instance().run();
-        });
-        return;
-    }
+    // 主事件循环运行在调用 run() 的线程上。不能用 async 转发：main poller 的
+    // 循环线程由 runMainLoop() 首次调用确立，转发会陷入“循环未启动 -> 转发任务
+    // 无法执行 -> 循环永不启动”的死锁。
     TraceL << "Start to run...";
     // Create dirs for cache files
     for (int i = 0; i < 256; ++i)

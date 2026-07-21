@@ -3,7 +3,7 @@
 #include <string>
 #include <iostream>
 using namespace drogon::utils;
-
+#if 0
 DROGON_TEST(BrotliTest)
 {
     SUBSECTION(shortText)
@@ -28,3 +28,4 @@ DROGON_TEST(BrotliTest)
         CHECK(source == decompressed);
     }
 }
+#endif

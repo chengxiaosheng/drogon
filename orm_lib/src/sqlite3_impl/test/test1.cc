@@ -14,7 +14,7 @@ using namespace drogon::orm;
 
 int main()
 {
-    trantor::Logger::setLogLevel(trantor::Logger::kTrace);
+    toolkit::Logger::Instance().setLevel(toolkit::LTrace);
     auto clientPtr = DbClient::newSqlite3Client("filename=test.db", 1);
     std::this_thread::sleep_for(1s);
 

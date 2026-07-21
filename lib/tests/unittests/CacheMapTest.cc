@@ -1,7 +1,6 @@
 #include <drogon/drogon_test.h>
 #include <drogon/CacheMap.h>
 #include <drogon/HttpAppFramework.h>
-#include <trantor/net/EventLoopThread.h>
 
 #include <chrono>
 
@@ -10,9 +9,7 @@ using namespace std::chrono_literals;
 
 DROGON_TEST(CacheMapTest)
 {
-    trantor::EventLoopThread loopThread;
-    loopThread.run();
-    drogon::CacheMap<std::string, std::string> cache(loopThread.getLoop(),
+    drogon::CacheMap<std::string, std::string> cache(toolkit::EventPollerPool::Instance().getPoller(),
                                                      0.1f,
                                                      4,
                                                      30);

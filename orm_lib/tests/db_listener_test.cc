@@ -85,7 +85,7 @@ DROGON_TEST(ListenNotifyTest)
 
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(toolkit::LogLevel::kDebug);
+    toolkit::Logger::Instance().setLevel(toolkit::LDebug);
 
     std::string dbConnInfo;
     const char *dbUrl = std::getenv("DROGON_TEST_DB_CONN_INFO");

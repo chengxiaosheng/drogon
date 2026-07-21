@@ -3698,8 +3698,7 @@ DROGON_TEST(SQLite3Test)
             FAULT("sqlite3 - CoroMapper coroutine interface(2) what():",
                   e.base().what());
         }
-        co_await drogon::sleepCoro(
-            trantor::EventLoop::getEventLoopOfCurrentThread(), 1.0s);
+        co_await drogon::sleepCoro(toolkit::EventPollerPool::Instance().getPoller(), 1.0s);
     };
     drogon::sync_wait(coro_test());
 
@@ -4258,7 +4257,7 @@ using namespace drogon;
 
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(toolkit::LogLevel::kDebug);
+    toolkit::Logger::Instance().setLevel(toolkit::LDebug);
 
 #if USE_MYSQL
     mysqlClient = DbClient::newMysqlClient(

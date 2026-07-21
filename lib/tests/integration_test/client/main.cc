@@ -16,7 +16,6 @@
 
 #define DROGON_TEST_MAIN
 #include <drogon/drogon.h>
-#include <trantor/net/EventLoopThread.h>
 #include <trantor/net/TcpClient.h>
 #include <drogon/HttpAppFramework.h>
 #include <drogon/drogon_test.h>
@@ -1273,7 +1272,7 @@ DROGON_TEST(HttpsTimeoutTest)
 
 int main(int argc, char **argv)
 {
-    trantor::Logger::setLogLevel(toolkit::LogLevel::kDebug);
+    toolkit::Logger::Instance().setLevel(toolkit::LDebug);
     loadFileLengths();
 
     std::promise<void> p1;

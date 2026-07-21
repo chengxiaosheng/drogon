@@ -7,6 +7,6 @@
 Task<HttpResponsePtr> CoroFilter::doFilter(const HttpRequestPtr& req)
 {
     int secs = std::stoi(req->getParameter("secs"));
-    co_await sleepCoro(trantor::EventLoop::getEventLoopOfCurrentThread(), secs);
+    co_await sleepCoro(toolkit::EventPollerPool::Instance().getPoller(), secs);
     co_return {};
 }

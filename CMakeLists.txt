@@ -12,7 +12,6 @@ option(BUILD_SHARED_LIBS "Build drogon as a shared lib" OFF)
 option(BUILD_DOC "Build Doxygen documentation" OFF)
 option(BUILD_BROTLI "Build Brotli" ON)
 option(BUILD_YAML_CONFIG "Build yaml config" ON)
-option(USE_SUBMODULE "Use trantor as a submodule" ON)
 option(USE_STATIC_LIBS_ONLY "Use only static libraries as dependencies" OFF)
 
 include(CMakeDependentOption)
@@ -21,7 +20,7 @@ CMAKE_DEPENDENT_OPTION(LIBPQ_BATCH_MODE "Use batch mode for libpq" ON "BUILD_POS
 CMAKE_DEPENDENT_OPTION(BUILD_MYSQL "Build with mysql support" ON "BUILD_ORM" OFF)
 CMAKE_DEPENDENT_OPTION(BUILD_SQLITE "Build with sqlite3 support" ON "BUILD_ORM" OFF)
 CMAKE_DEPENDENT_OPTION(BUILD_REDIS "Build with redis support" ON "BUILD_ORM" OFF)
-CMAKE_DEPENDENT_OPTION(USE_SPDLOG "Allow using the spdlog logging library" OFF "USE_SUBMODULE" OFF)
+option(USE_SPDLOG "Allow using the spdlog logging library" OFF)
 
 set(DROGON_MAJOR_VERSION 1)
 set(DROGON_MINOR_VERSION 9)
@@ -126,6 +125,7 @@ target_include_directories(
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/nosql_lib/redis/inc>
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/exports>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/third_party/zltoolkit/src/trantor>
     $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>)
 
 if (WIN32)

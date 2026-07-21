@@ -42,7 +42,7 @@ const std::string User::tableName = "users";
 
 int main()
 {
-    trantor::Logger::setLogLevel(trantor::Logger::kTrace);
+    toolkit::Logger::Instance().setLevel(toolkit::LTrace);
     auto client =
         DbClient::newPgClient("host=127.0.0.1 port=5432 dbname=test user=antao",
                               1);

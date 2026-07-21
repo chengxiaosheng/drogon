@@ -32,11 +32,11 @@ struct TestCookie
 DROGON_TEST(MainLoopTest)
 {
     auto cookie = std::make_shared<TestCookie>(TEST_CTX);
-    drogon::app().getLoop()->queueInLoop([cookie]() { cookie->take(); });
+    drogon::app().getLoop()->async([cookie]() { cookie->take(); });
 
     std::thread t([TEST_CTX]() {
         auto cookie2 = std::make_shared<TestCookie>(TEST_CTX);
-        drogon::app().getLoop()->queueInLoop([cookie2]() { cookie2->take(); });
+        drogon::app().getLoop()->async([cookie2]() { cookie2->take(); });
     });
     t.join();
 }

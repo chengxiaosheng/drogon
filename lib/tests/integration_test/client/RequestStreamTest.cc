@@ -11,7 +11,7 @@ using namespace drogon;
 
 template <typename T>
 void checkStreamRequest(T &&TEST_CTX,
-                        trantor::EventLoop *loop,
+                        const std::shared_ptr<toolkit::EventPoller> &loop,
                         const trantor::InetAddress &addr,
                         const std::vector<std::string_view> &dataToSend,
                         std::string_view expectedResp)

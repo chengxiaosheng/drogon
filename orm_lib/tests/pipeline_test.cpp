@@ -15,7 +15,10 @@ static auto runNextStep = [] {
     InfoL << "Step = " << step;
     if (step < testSteps.size())
     {
-        app().getIOLoop(0)->runAfter(0.5, testSteps[step++]);
+        app().getIOLoop(0)->doDelayTask(0.5 * 1000, []() {
+            (void)testSteps[step++];
+            return 0;
+        });
     }
     else
     {

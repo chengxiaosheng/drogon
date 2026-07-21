@@ -6,7 +6,7 @@ Task<> CoroTest::get(HttpRequestPtr req,
 {
     // Force co_await to test awaiting works
     co_await drogon::sleepCoro(
-        trantor::EventLoop::getEventLoopOfCurrentThread(),
+        toolkit::EventPollerPool::Instance().getPoller(),
         std::chrono::milliseconds(100));
 
     auto resp = HttpResponse::newHttpResponse();
@@ -22,7 +22,7 @@ Task<> CoroTest::get_with_param(
 {
     // Force co_await to test awaiting works
     co_await drogon::sleepCoro(
-        trantor::EventLoop::getEventLoopOfCurrentThread(),
+        toolkit::EventPollerPool::Instance().getPoller(),
         std::chrono::milliseconds(100));
 
     auto resp = HttpResponse::newHttpResponse();
@@ -36,7 +36,7 @@ Task<HttpResponsePtr> CoroTest::get_with_param2(HttpRequestPtr req,
 {
     // Force co_await to test awaiting works
     co_await drogon::sleepCoro(
-        trantor::EventLoop::getEventLoopOfCurrentThread(),
+        toolkit::EventPollerPool::Instance().getPoller(),
         std::chrono::milliseconds(100));
 
     auto resp = HttpResponse::newHttpResponse();

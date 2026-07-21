@@ -31,12 +31,12 @@ DROGON_TEST(DbApiTest)
         auto client = app().getDbClient("mysql_non_fast");
         CHECK(client != nullptr);
         client->closeAll();
-        drogon::app().getLoop()->runInLoop([TEST_CTX]() {
+        drogon::app().getLoop()->async([TEST_CTX]() {
             auto client = app().getFastDbClient("mysql_fast");
             CHECK(client != nullptr);
             client->closeAll();
         });
-        drogon::app().getIOLoop(0)->runInLoop([TEST_CTX]() {
+        drogon::app().getIOLoop(0)->async([TEST_CTX]() {
             auto client = app().getFastDbClient("mysql_fast");
             CHECK(client != nullptr);
             client->closeAll();
