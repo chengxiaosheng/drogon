@@ -17,6 +17,7 @@
 #include <iostream>
 #include <string_view>
 #include <drogon/utils/Utilities.h>
+#include <Util/logger.h>
 
 namespace drogon
 {

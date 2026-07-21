@@ -1,4 +1,7 @@
 #include <drogon/plugins/Hodor.h>
+
+#include "Thread/WorkThreadPool.h"
+
 #include <drogon/plugins/RealIpResolver.h>
 
 using namespace drogon::plugin;
@@ -45,7 +48,7 @@ Hodor::LimitStrategy Hodor::makeLimitStrategy(const Json::Value &config)
     {
         strategy.ipLimiterMapPtr =
             std::make_unique<CacheMap<std::string, RateLimiterPtr>>(
-                drogon::app().getLoop(),
+                app().getLoop(),
                 float(timeUnit_.count() / 60 < 1 ? 1 : timeUnit_.count() / 60),
                 2,
                 100);
@@ -56,7 +59,7 @@ Hodor::LimitStrategy Hodor::makeLimitStrategy(const Json::Value &config)
     {
         strategy.userLimiterMapPtr =
             std::make_unique<CacheMap<std::string, RateLimiterPtr>>(
-                drogon::app().getLoop(),
+                app().getLoop(),
                 float(timeUnit_.count() / 60 < 1 ? 1 : timeUnit_.count() / 60),
                 2,
                 100);

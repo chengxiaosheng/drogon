@@ -589,20 +589,24 @@ namespace internal
 {
 struct [[nodiscard]] TimerAwaiter : CallbackAwaiter<void>
 {
-    TimerAwaiter(trantor::EventLoop *loop,
+    TimerAwaiter(const std::shared_ptr<toolkit::EventPoller> &loop,
                  const std::chrono::duration<double> &delay)
         : loop_(loop), delay_(delay.count())
     {
     }
 
-    TimerAwaiter(trantor::EventLoop *loop, double delay)
+    TimerAwaiter(const std::shared_ptr<toolkit::EventPoller> &loop, double delay)
         : loop_(loop), delay_(delay)
     {
     }
 
     void await_suspend(std::coroutine_handle<> handle)
     {
-        loop_->runAfter(delay_, [handle]() { handle.resume(); });
+        loop_->doDelayTask(static_cast<uint64_t>(delay_ * 1000),
+                           [handle]() -> uint64_t {
+                               handle.resume();
+                               return 0;
+                           });
     }
 
   private:
@@ -612,9 +616,9 @@ struct [[nodiscard]] TimerAwaiter : CallbackAwaiter<void>
 
 struct [[nodiscard]] LoopAwaiter : CallbackAwaiter<void>
 {
-    LoopAwaiter(trantor::EventLoop *workLoop,
+    LoopAwaiter(const std::shared_ptr<toolkit::EventPoller> &workLoop,
                 std::function<void()> &&taskFunc,
-                trantor::EventLoop *resumeLoop = nullptr)
+                const std::shared_ptr<toolkit::EventPoller> &resumeLoop = nullptr)
         : workLoop_(workLoop),
           resumeLoop_(resumeLoop),
           taskFunc_(std::move(taskFunc))
@@ -624,12 +628,12 @@ struct [[nodiscard]] LoopAwaiter : CallbackAwaiter<void>
 
     void await_suspend(std::coroutine_handle<> handle)
     {
-        workLoop_->queueInLoop([handle, this]() {
+        workLoop_->async([handle, this]() {
             try
             {
                 taskFunc_();
                 if (resumeLoop_ && resumeLoop_ != workLoop_)
-                    resumeLoop_->queueInLoop([handle]() { handle.resume(); });
+                    resumeLoop_->async([handle]() { handle.resume(); }, false);
                 else
                     handle.resume();
             }
@@ -637,28 +641,28 @@ struct [[nodiscard]] LoopAwaiter : CallbackAwaiter<void>
             {
                 setException(std::current_exception());
                 if (resumeLoop_ && resumeLoop_ != workLoop_)
-                    resumeLoop_->queueInLoop([handle]() { handle.resume(); });
+                    resumeLoop_->async([handle]() { handle.resume(); }, false);
                 else
                     handle.resume();
             }
-        });
+        }, false);
     }
 
   private:
-    trantor::EventLoop *workLoop_{nullptr};
-    trantor::EventLoop *resumeLoop_{nullptr};
+    std::shared_ptr<toolkit::EventPoller> workLoop_{nullptr};
+    std::shared_ptr<toolkit::EventPoller> resumeLoop_{nullptr};
     std::function<void()> taskFunc_;
 };
 
 struct [[nodiscard]] SwitchThreadAwaiter : CallbackAwaiter<void>
 {
-    explicit SwitchThreadAwaiter(trantor::EventLoop *loop) : loop_(loop)
+    explicit SwitchThreadAwaiter(const std::shared_ptr<toolkit::EventPoller> &loop) : loop_(loop)
     {
     }
 
     void await_suspend(std::coroutine_handle<> handle)
     {
-        loop_->runInLoop([handle]() { handle.resume(); });
+        loop_->async([handle]() { handle.resume(); }, true);
     }
 
   private:
@@ -667,7 +671,7 @@ struct [[nodiscard]] SwitchThreadAwaiter : CallbackAwaiter<void>
 
 struct [[nodiscard]] EndAwaiter : CallbackAwaiter<void>
 {
-    EndAwaiter(trantor::EventLoop *loop) : loop_(loop)
+    EndAwaiter(const std::shared_ptr<toolkit::EventPoller> &loop) : loop_(loop)
     {
         assert(loop);
     }
@@ -678,20 +682,20 @@ struct [[nodiscard]] EndAwaiter : CallbackAwaiter<void>
     }
 
   private:
-    trantor::EventLoop *loop_{nullptr};
+    std::shared_ptr<toolkit::EventPoller> loop_{nullptr};
 };
 
 }  // namespace internal
 
 inline internal::TimerAwaiter sleepCoro(
-    trantor::EventLoop *loop,
+    const std::shared_ptr<toolkit::EventPoller> &loop,
     const std::chrono::duration<double> &delay) noexcept
 {
     assert(loop);
     return {loop, delay};
 }
 
-inline internal::TimerAwaiter sleepCoro(trantor::EventLoop *loop,
+inline internal::TimerAwaiter sleepCoro(const std::shared_ptr<toolkit::EventPoller> &loop,
                                         double delay) noexcept
 {
     assert(loop);
@@ -699,22 +703,22 @@ inline internal::TimerAwaiter sleepCoro(trantor::EventLoop *loop,
 }
 
 inline internal::LoopAwaiter queueInLoopCoro(
-    trantor::EventLoop *workLoop,
+    const std::shared_ptr<toolkit::EventPoller> &workLoop,
     std::function<void()> taskFunc,
-    trantor::EventLoop *resumeLoop = nullptr)
+    const std::shared_ptr<toolkit::EventPoller> &resumeLoop = nullptr)
 {
     assert(workLoop);
     return {workLoop, std::move(taskFunc), resumeLoop};
 }
 
 inline internal::SwitchThreadAwaiter switchThreadCoro(
-    trantor::EventLoop *loop) noexcept
+    const std::shared_ptr<toolkit::EventPoller> &loop) noexcept
 {
     assert(loop);
     return internal::SwitchThreadAwaiter{loop};
 }
 
-inline internal::EndAwaiter untilQuit(trantor::EventLoop *loop)
+inline internal::EndAwaiter untilQuit(const std::shared_ptr<toolkit::EventPoller> &loop)
 {
     assert(loop);
     return {loop};
@@ -778,14 +782,14 @@ namespace internal
 template <typename T>
 struct [[nodiscard]] EventLoopAwaiter : public drogon::CallbackAwaiter<T>
 {
-    EventLoopAwaiter(std::function<T()> &&task, trantor::EventLoop *loop)
+    EventLoopAwaiter(std::function<T()> &&task, const std::shared_ptr<toolkit::EventPoller> &loop)
         : task_(std::move(task)), loop_(loop)
     {
     }
 
     void await_suspend(std::coroutine_handle<> handle)
     {
-        loop_->queueInLoop([this, handle]() {
+        loop_->async([this, handle]() {
             try
             {
                 if constexpr (!std::is_same_v<T, void>)
@@ -805,7 +809,7 @@ struct [[nodiscard]] EventLoopAwaiter : public drogon::CallbackAwaiter<T>
                 this->setException(std::current_exception());
                 handle.resume();
             }
-        });
+        }, false);
     }
 
   private:
@@ -993,7 +997,7 @@ struct WhenAllAwaiter<std::vector<Task<void>>> : public CallbackAwaiter<void>
  * can be co_awaited in a coroutine.
  */
 template <typename T>
-inline internal::EventLoopAwaiter<T> queueInLoopCoro(trantor::EventLoop *loop,
+inline internal::EventLoopAwaiter<T> queueInLoopCoro(const std::shared_ptr<toolkit::EventPoller> &loop,
                                                      std::function<T()> task)
 {
     return internal::EventLoopAwaiter<T>(std::move(task), loop);
@@ -1031,15 +1035,13 @@ class Mutex final
     }
 
     [[nodiscard]] ScopedCoroMutexAwaiter scoped_lock(
-        trantor::EventLoop *loop =
-            trantor::EventLoop::getEventLoopOfCurrentThread()) noexcept
+        const std::shared_ptr<toolkit::EventPoller> &loop = toolkit::EventPollerPool::Instance().getPoller()) noexcept
     {
         return ScopedCoroMutexAwaiter(*this, loop);
     }
 
     [[nodiscard]] CoroMutexAwaiter lock(
-        trantor::EventLoop *loop =
-            trantor::EventLoop::getEventLoopOfCurrentThread()) noexcept
+        const std::shared_ptr<toolkit::EventPoller> &loop = toolkit::EventPollerPool::Instance().getPoller()) noexcept
     {
         return CoroMutexAwaiter(*this, loop);
     }
@@ -1080,7 +1082,7 @@ class Mutex final
         if (waitersHead->loop_)
         {
             auto handle = waitersHead->handle_;
-            waitersHead->loop_->runInLoop([handle] { handle.resume(); });
+            waitersHead->loop_->async([handle] { handle.resume(); }, true);
         }
         else
         {
@@ -1092,8 +1094,8 @@ class Mutex final
     class CoroMutexAwaiter
     {
       public:
-        CoroMutexAwaiter(Mutex &mutex, trantor::EventLoop *loop) noexcept
-            : mutex_(mutex), loop_(loop)
+        CoroMutexAwaiter(Mutex &mutex, const std::shared_ptr<toolkit::EventPoller> &loop) noexcept
+            : mutex_(mutex), loop_(loop), next_(nullptr)
         {
         }
 
@@ -1124,7 +1126,7 @@ class Mutex final
     class ScopedCoroMutexAwaiter : public CoroMutexAwaiter
     {
       public:
-        ScopedCoroMutexAwaiter(Mutex &mutex, trantor::EventLoop *loop)
+        ScopedCoroMutexAwaiter(Mutex &mutex, const std::shared_ptr<toolkit::EventPoller> &loop)
             : CoroMutexAwaiter(mutex, loop)
         {
         }

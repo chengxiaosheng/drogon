@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 #include <sys/stat.h>
+#include <Poller/Timer.h>
 
 namespace drogon
 {
@@ -44,8 +45,8 @@ class SharedLibManager : public toolkit::noncopyable
     void *loadLib(const std::string &soFile, void *oldHld);
     bool shouldCompileLib(const std::string &soFile,
                           const struct stat &sourceStat);
-    std::shared_ptr<toolkit::Timer> timeId_;
+    toolkit::EventPoller::DelayTask::Ptr timeId_;
     // trantor::EventLoopThread workingThread_;
-    std::shared_ptr<toolkit::EventPoller> workingThread_;
+    std::weak_ptr<toolkit::EventPoller> workingThread_;
 };
 }  // namespace drogon

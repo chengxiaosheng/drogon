@@ -14,6 +14,9 @@
 
 #include "SessionManager.h"
 
+#include <utility>
+#include "drogon/HttpAppFramework.h"
+
 using namespace drogon;
 
 SessionManager::SessionManager(
@@ -26,7 +29,7 @@ SessionManager::SessionManager(
       timeout_(timeout),
       sessionStartAdvices_(startAdvices),
       sessionDestroyAdvices_(destroyAdvices),
-      idGeneratorCallback_(idGeneratorCallback)
+      idGeneratorCallback_(std::move(idGeneratorCallback))
 {
     if (timeout_ > 0)
     {
@@ -49,7 +52,7 @@ SessionManager::SessionManager(
 
         sessionMapPtr_ = std::unique_ptr<CacheMap<std::string, SessionPtr>>(
             new CacheMap<std::string, SessionPtr>(
-                loop_,
+                loop_.lock(),
                 1.0,
                 wheelNum,
                 bucketNum,
@@ -70,7 +73,7 @@ SessionManager::SessionManager(
     {
         sessionMapPtr_ = std::unique_ptr<CacheMap<std::string, SessionPtr>>(
             new CacheMap<std::string, SessionPtr>(
-                loop_,
+                loop_.lock(),
                 0,
                 0,
                 0,

@@ -10,7 +10,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(${PROJECT_NAME} main.cc)
 
-find_package(Drogon CONFIG REQUIRED)
+if(NOT TARGET Drogon::Drogon)
+    find_package(Drogon CONFIG REQUIRED)
+endif ()
 target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
 
 aux_source_directory(controllers CTL_SRC)

@@ -111,11 +111,13 @@ class CacheMap
         }
         if (tickInterval_ > 0 && wheelsNumber_ > 0 && bucketsNumPerWheel_ > 0)
         {
-            timerId_ =  std::make_shared<toolkit::Timer>(
-                tickInterval_, [this, ctrlBlockPtr = ctrlBlockPtr_]() {
+            timerId_ = loop->doDelayTask(tickInterval_ * 1000,
+                [tickInterval = tickInterval_,
+                 ctrlBlockPtr = ctrlBlockPtr_,
+                 this]() -> uint64_t {
                     std::lock_guard<std::mutex> lock(ctrlBlockPtr->mtx);
                     if (ctrlBlockPtr->destructed)
-                        return;
+                        return 0;
 
                     size_t t = ++ticksCounter_;
                     size_t pow = 1;
@@ -126,8 +128,6 @@ class CacheMap
                             CallbackBucket tmp;
                             {
                                 std::lock_guard<std::mutex> lock(bucketMutex_);
-                                // use tmp val to make this critical area as
-                                // short as possible.
                                 wheels_[i].front().swap(tmp);
                                 wheels_[i].pop_front();
                                 wheels_[i].push_back(CallbackBucket());
@@ -135,8 +135,9 @@ class CacheMap
                         }
                         pow = pow * bucketsNumPerWheel_;
                     }
-                }, loop_);
-            loop_->runOnQuit([ctrlBlockPtr = ctrlBlockPtr_] {
+                    return tickInterval * 1000;
+                });
+            loop->runOnQuit([ctrlBlockPtr = ctrlBlockPtr_] {
                 std::lock_guard<std::mutex> lock(ctrlBlockPtr->mtx);
                 ctrlBlockPtr->loopEnded = true;
             });
@@ -154,7 +155,10 @@ class CacheMap
         map_.clear();
         if (!ctrlBlockPtr_->loopEnded)
         {
-            timerId_.reset();
+            if (auto timer = timerId_.lock())
+            {
+                timer->cancel();
+            }
         }
         for (auto iter = wheels_.rbegin(); iter != wheels_.rend(); ++iter)
         {
@@ -404,7 +408,7 @@ class CacheMap
      */
     std::shared_ptr<toolkit::EventPoller> getLoop()
     {
-        return loop_;
+        return loop_.lock();
     }
 
     /**
@@ -457,8 +461,8 @@ class CacheMap
 
     std::mutex mtx_;
     std::mutex bucketMutex_;
-    std::shared_ptr<toolkit::Timer> timerId_;
-    std::shared_ptr<toolkit::EventPoller> loop_;
+    std::weak_ptr<toolkit::EventPoller::DelayTask> timerId_;
+    std::weak_ptr<toolkit::EventPoller> loop_;
 
     float tickInterval_;
     size_t wheelsNumber_;

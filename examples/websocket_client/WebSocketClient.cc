@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     // Connect to a public echo server
     if (argc > 1 && std::string(argv[1]) == "-p")
     {
-        server = "wss://echo.websocket.events/.ws";
+        server = "ws://echo.websocket.org/.ws";
         path = "/";
     }
     else
@@ -23,7 +23,6 @@ int main(int argc, char *argv[])
         port = 8848;
         path = "/chat";
     }
-
     std::string serverString;
     if (port.value_or(0) != 0)
         serverString = server + ":" + std::to_string(port.value());
@@ -32,28 +31,28 @@ int main(int argc, char *argv[])
     auto wsPtr = WebSocketClient::newWebSocketClient(serverString);
     auto req = HttpRequest::newHttpRequest();
     req->setPath(path);
-
-    wsPtr->setMessageHandler([](const std::string &message,
-                                const WebSocketClientPtr &,
-                                const WebSocketMessageType &type) {
-        std::string messageType = "Unknown";
-        if (type == WebSocketMessageType::Text)
-            messageType = "text";
-        else if (type == WebSocketMessageType::Pong)
-            messageType = "pong";
-        else if (type == WebSocketMessageType::Ping)
-            messageType = "ping";
-        else if (type == WebSocketMessageType::Binary)
-            messageType = "binary";
-        else if (type == WebSocketMessageType::Close)
-            messageType = "Close";
-
-        InfoL << "new message (" << messageType << "): " << message;
-    });
-
-    wsPtr->setConnectionClosedHandler([](const WebSocketClientPtr &) {
-        InfoL << "WebSocket connection closed!";
-    });
+    //
+    // wsPtr->setMessageHandler([](const std::string &message,
+    //                             const WebSocketClientPtr &,
+    //                             const WebSocketMessageType &type) {
+    //     std::string messageType = "Unknown";
+    //     if (type == WebSocketMessageType::Text)
+    //         messageType = "text";
+    //     else if (type == WebSocketMessageType::Pong)
+    //         messageType = "pong";
+    //     else if (type == WebSocketMessageType::Ping)
+    //         messageType = "ping";
+    //     else if (type == WebSocketMessageType::Binary)
+    //         messageType = "binary";
+    //     else if (type == WebSocketMessageType::Close)
+    //         messageType = "Close";
+    //
+    //     InfoL << "new message (" << messageType << "): " << message;
+    // });
+    //
+    // wsPtr->setConnectionClosedHandler([](const WebSocketClientPtr &) {
+    //     InfoL << "WebSocket connection closed!";
+    // });
 
     InfoL << "Connecting to WebSocket at " << server;
     wsPtr->connectToServer(

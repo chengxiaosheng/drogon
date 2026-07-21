@@ -136,8 +136,8 @@ void DbClientLockFree::execSql(
                         }
                         else
                         {
-                            loop_->queueInLoop(
-                                [rcb = std::move(rcb), r]() { rcb(r); });
+                            loop_->async(
+                                [rcb = std::move(rcb), r]() { rcb(r); }, false);
                         }
                     },
                     std::move(exceptCallback));
@@ -580,9 +580,9 @@ void DbClientLockFree::execSqlWithTimeout(
                         }
                         else
                         {
-                            loop_->queueInLoop(
+                            loop_->async(
                                 [resultCallback = std::move(resultCallback),
-                                 r]() { resultCallback(r); });
+                                 r]() { resultCallback(r); }, false);
                         }
                     },
                     std::move(exceptionCallback));

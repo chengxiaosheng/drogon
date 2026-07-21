@@ -14,7 +14,7 @@ DROGON_TEST(RealIpResolver)
 {
     auto client =
         HttpClient::newHttpClient("http://127.0.0.1:8017",
-                                  HttpAppFramework::instance().getLoop());
+                                  toolkit::EventPollerPool::Instance().getPoller());
 
     auto newRequest = []() {
         auto req = HttpRequest::newHttpRequest();
@@ -134,14 +134,14 @@ int main(int argc, char **argv)
 
     std::thread thr([&]() {
         app().loadConfigJson(config);
-        app().getLoop()->queueInLoop([&p1]() { p1.set_value(); });
+        app().getLoop()->async([&p1]() { p1.set_value(); });
         app().run();
     });
 
     f1.get();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     int testStatus = test::run(argc, argv);
-    app().getLoop()->queueInLoop([]() { app().quit(); });
+    app().getLoop()->async([]() { app().quit(); });
     thr.join();
     return testStatus;
 }

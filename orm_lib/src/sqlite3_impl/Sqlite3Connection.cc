@@ -14,6 +14,7 @@
 
 #include "Sqlite3Connection.h"
 #include "Sqlite3ResultImpl.h"
+#include "Thread/WorkThreadPool.h"
 #include "drogon/HttpAppFramework.h"
 
 #include <drogon/orm/Exception.h>
@@ -90,7 +91,7 @@ Sqlite3Connection::Sqlite3Connection(
 
 void Sqlite3Connection::init()
 {
-    loop_ = drogon::app().getLoop();
+    loop_ = toolkit::WorkThreadPool::Instance().getPoller();
     std::call_once(once_, []() {
         auto ret = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
         if (ret != SQLITE_OK)

@@ -23,6 +23,8 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
             auto key = userid + "." + VDate;
             const trantor::Date now = trantor::Date::date();
             auto redisClient = drogon::app().getFastRedisClient();
+
+            bool error = false;
             try
             {
                 auto lastDate =
@@ -49,6 +51,12 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
             catch (const std::exception &err)
             {
                 TraceL << "first visit,insert visitDate";
+                error = true;
+            }
+             co_await updateCache(userid + "." VDate, now, redisClient);
+
+            if (error)
+            {
                 try
                 {
                     co_await updateCache(userid + "." VDate, now, redisClient);
@@ -69,5 +77,9 @@ void TimeFilter::doFilter(const HttpRequestPtr &req,
             cb(resp);
             co_return;
         }
+    });
+    async_run([]() ->Task<int> {
+
+        co_return 1;
     });
 }

@@ -481,8 +481,9 @@ WebSocketClientPtr WebSocketClient::newWebSocketClient(const std::string &ip,
                                                        bool validateCert)
 {
     bool isIpv6 = ip.find(':') == std::string::npos ? false : true;
+    auto poller = loop ? loop : toolkit::EventPollerPool::Instance().getPoller();
     return std::make_shared<WebSocketClientImpl>(
-        loop == nullptr ? HttpAppFrameworkImpl::instance().getLoop() : loop,
+        poller,
         trantor::InetAddress(ip, port, isIpv6),
         useSSL,
         useOldTLS,
@@ -495,8 +496,9 @@ WebSocketClientPtr WebSocketClient::newWebSocketClient(
     bool useOldTLS,
     bool validateCert)
 {
+    auto poller = loop ? loop : toolkit::EventPollerPool::Instance().getPoller();
     return std::make_shared<WebSocketClientImpl>(
-        loop == nullptr ? HttpAppFrameworkImpl::instance().getLoop() : loop,
+        poller,
         hostString,
         useOldTLS,
         validateCert);

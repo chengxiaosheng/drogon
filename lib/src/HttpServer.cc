@@ -67,46 +67,81 @@ static void handleHttpOptions(
     const std::string &allowMethods,
     std::function<void(const HttpResponsePtr &)> &&callback);
 
-HttpServer::HttpServer(EventLoop *loop,
-                       const InetAddress &listenAddr,
-                       std::string name)
-#ifdef __linux__
-    : server_(loop, listenAddr, std::move(name))
-#else
-    : server_(loop, listenAddr, std::move(name), true, app().reusePort())
-#endif
+HttpServer::HttpServer(const InetAddress &listenAddr, std::string name)
+    : listenAddr_(listenAddr),
+      name_(std::move(name)),
+      server_(std::make_shared<toolkit::TcpServer>()),
+      idleConnectionTimeout_(
+          HttpAppFrameworkImpl::instance().getIdleConnectionTimeout())
 {
-    server_.setConnectionCallback(
-        [this](const trantor::TcpConnectionPtr &conn) {
-            onConnection(conn);
-            if (connectionCallback_)
-                connectionCallback_(conn);
-        });
-    server_.setRecvMessageCallback(onMessage);
-    server_.kickoffIdleConnections(
-        HttpAppFrameworkImpl::instance().getIdleConnectionTimeout());
 }
 
 HttpServer::~HttpServer() = default;
+
+// 按 Session 类型启动 toolkit::TcpServer，在 cb 内逐 session 接线
+template <typename SessionT>
+void HttpServer::startWith()
+{
+    auto wire = [this](std::shared_ptr<SessionT> &session) {
+        session->setConnectionCallback(
+            [this](const trantor::TcpConnectionPtr &conn) {
+                onConnection(conn);
+                if (connectionCallback_)
+                    connectionCallback_(conn);
+            });
+        session->setRecvMessageCallback(onMessage);
+        if (idleConnectionTimeout_ > 0)
+            session->enableKickingOff(idleConnectionTimeout_);
+        session->initConnection();
+        if (afterAcceptSetSockOptCallback_)
+        {
+            afterAcceptSetSockOptCallback_(session->getSock()->rawFD());
+        }
+    };
+    server_->template start<SessionT>(listenAddr_.toPort(),
+                                     listenAddr_.toIp(),
+                                     1024,
+                                     wire);
+}
 
 void HttpServer::start()
 {
     if (beforeListenSetSockOptCallback_)
     {
-        server_.setBeforeListenSockOptCallback(beforeListenSetSockOptCallback_);
+        // toolkit::TcpServer 无 pre-listen 钩子；记录但不在 v1 应用
+        // (SO_REUSEADDR 默认开启；多 poller clone-socket accept 已覆盖 reusePort 语义)
     }
-    if (afterAcceptSetSockOptCallback_)
+    TraceL << "HttpServer[" << name_ << "] starts listening on "
+           << listenAddr_.toIpPort();
+    if (tlsPolicyPtr_)
     {
-        server_.setAfterAcceptSockOptCallback(afterAcceptSetSockOptCallback_);
+        // 注册按监听器 TLS 策略，供 SessionWithTLSPolicy<HttpSession> 取 SSL_CTX
+        toolkit::TLSSessionFactory::Instance().registerServerPolicy(
+            listenAddr_.toIp(), listenAddr_.toPort(), tlsPolicyPtr_);
+        startWith<toolkit::SessionWithTLSPolicy<HttpSession>>();
     }
-    TraceL << "HttpServer[" << server_.name() << "] starts listening on "
-              << server_.ipPort();
-    server_.start();
+    else
+    {
+        startWith<HttpSession>();
+    }
 }
 
 void HttpServer::stop()
 {
-    server_.stop();
+    // toolkit::TcpServer 无显式 stop；监听 socket 在 server_ 析构时关闭
+    // （ListenerManager::stopListening 清空 servers_ 触发析构）
+    server_.reset();
+    InfoL << "stop http server " << listenAddr_.toIpPort();
+}
+
+void HttpServer::reloadSSL()
+{
+    if (tlsPolicyPtr_)
+    {
+        // 重新注册策略会清除缓存的 SSL_CTX，下次连接重建
+        toolkit::TLSSessionFactory::Instance().registerServerPolicy(
+            listenAddr_.toIp(), listenAddr_.toPort(), tlsPolicyPtr_);
+    }
 }
 
 void HttpServer::onConnection(const TcpConnectionPtr &conn)
@@ -676,16 +711,17 @@ void HttpServer::httpRequestHandling(
             {
                 static_cast<HttpResponseImpl *>(resp.get())->makeHeaderString();
                 auto loop = req->getLoop();
-                if (loop->isInLoopThread())
+                if (loop->isCurrentThread())
                 {
                     binderPtr->responseCache_.setThreadData(resp);
                 }
                 else
                 {
-                    loop->queueInLoop(
+                    loop->async(
                         [binderPtr = std::move(binderPtr), resp]() {
                             binderPtr->responseCache_.setThreadData(resp);
-                        });
+                        },
+                        false);
                 }
             }
             // post-handling aop
@@ -801,7 +837,7 @@ void HttpServer::handleResponse(
     AopAdvice::instance().passPreSendingAdvices(req, resp);
 
     auto newResp = getCompressedResponse(req, resp, isHeadMethod);
-    if (conn->getLoop()->isInLoopThread())
+    if (conn->getLoop()->isCurrentThread())
     {
         /*
          * A client that supports persistent connections MAY
@@ -836,7 +872,7 @@ void HttpServer::handleResponse(
     }
     else
     {
-        conn->getLoop()->queueInLoop(
+        conn->getLoop()->async(
             [conn, req, requestParser, newResp = std::move(newResp)]() mutable {
                 if (!conn->connected())
                 {
@@ -849,7 +885,8 @@ void HttpServer::handleResponse(
                     requestParser->popReadyResponses(responses);
                     sendResponses(conn, responses, requestParser->getBuffer());
                 }
-            });
+            },
+            false);
     }
 }
 
@@ -974,7 +1011,7 @@ void HttpServer::sendResponse(const TcpConnectionPtr &conn,
                               const HttpResponsePtr &response,
                               bool isHeadMethod)
 {
-    conn->getLoop()->assertInLoopThread();
+    assert(conn->getLoop()->isCurrentThread());
     auto respImplPtr = static_cast<HttpResponseImpl *>(response.get());
     if (!isHeadMethod)
     {
@@ -1047,7 +1084,7 @@ void HttpServer::sendResponses(
     const std::vector<std::pair<HttpResponsePtr, bool>> &responses,
     trantor::MsgBuffer &buffer)
 {
-    conn->getLoop()->assertInLoopThread();
+    assert(conn->getLoop()->isCurrentThread());
     if (responses.empty())
         return;
     if (responses.size() == 1)

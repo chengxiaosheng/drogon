@@ -240,7 +240,7 @@ void HttpControllersRouter::registerHttpSimpleController(
     auto binder = std::make_shared<HttpSimpleControllerBinder>();
     binder->handlerName_ = ctrlName;
     binder->middlewareNames_ = result.middlewares;
-    drogon::app().getLoop()->async([this, binder, ctrlName, path]() {
+    app().getLoop()->async([this, binder, ctrlName, path]() {
         auto &object_ = DrClassMap::getSingleInstance(ctrlName);
         auto controller =
             std::dynamic_pointer_cast<HttpSimpleControllerBase>(object_);
@@ -272,7 +272,7 @@ void HttpControllersRouter::registerWebSocketController(
     auto binder = std::make_shared<WebsocketControllerBinder>();
     binder->handlerName_ = ctrlName;
     binder->middlewareNames_ = result.middlewares;
-    drogon::app().getLoop()->async([this, binder, ctrlName, path]() {
+    app().getLoop()->async([this, binder, ctrlName, path]() {
         auto &object_ = DrClassMap::getSingleInstance(ctrlName);
         auto controller =
             std::dynamic_pointer_cast<WebSocketControllerBase>(object_);
@@ -300,7 +300,7 @@ void HttpControllersRouter::registerWebSocketControllerRegex(
     auto binder = std::make_shared<WebsocketControllerBinder>();
     binder->handlerName_ = ctrlName;
     binder->middlewareNames_ = result.middlewares;
-    drogon::app().getLoop()->async([binder, ctrlName]() {
+    app().getLoop()->async([binder, ctrlName]() {
         auto &object_ = DrClassMap::getSingleInstance(ctrlName);
         auto controller =
             std::dynamic_pointer_cast<WebSocketControllerBase>(object_);
@@ -324,7 +324,7 @@ void HttpControllersRouter::addHttpRegex(
     binderInfo->middlewareNames_ = middlewareNames;
     binderInfo->handlerName_ = handlerName;
     binderInfo->binderPtr_ = binder;
-    drogon::app().getLoop()->async([binderInfo]() {
+    app().getLoop()->async([binderInfo]() {
         // Recreate this with the correct number of threads.
         binderInfo->responseCache_ = IOThreadStorage<HttpResponsePtr>();
     }, false);
@@ -554,7 +554,7 @@ void HttpControllersRouter::addHttpPath(
     binderInfo->binderPtr_ = binder;
     binderInfo->parameterPlaces_ = std::move(places);
     binderInfo->queryParametersPlaces_ = std::move(parametersPlaces);
-    drogon::app().getLoop()->async([binderInfo]() {
+    app().getLoop()->async([binderInfo]() {
         // Recreate this with the correct number of threads.
         binderInfo->responseCache_ = IOThreadStorage<HttpResponsePtr>();
     }, false);

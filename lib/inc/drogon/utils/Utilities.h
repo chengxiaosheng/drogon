@@ -18,7 +18,6 @@
 #include <trantor/utils/Date.h>
 #include <trantor/utils/Funcs.h>
 #include <trantor/utils/Utilities.h>
-#include <trantor/utils/LogStream.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -794,17 +793,3 @@ using SafeStringMap =
     std::unordered_map<std::string, T, utils::internal::SafeStringHash>;
 }  // namespace drogon
 
-namespace trantor
-{
-inline LogStream &operator<<(LogStream &ls, const std::string_view &v)
-{
-    if (!v.empty())
-        ls.append(v.data(), v.length());
-    return ls;
-}
-
-inline LogStream &operator<<(LogStream &ls, const std::filesystem::path &p)
-{
-    return ls << p.string();
-}
-}  // namespace trantor

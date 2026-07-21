@@ -119,11 +119,11 @@ DROGON_TEST(CroutineBasics)
     CHECK(testVar == 1);
     async_run([TEST_CTX]() -> Task<void> {
         auto val =
-            co_await queueInLoopCoro<int>(app().getLoop(), []() { return 42; });
+            co_await asyncCoro<int>(app().getLoop(), []() { return 42; });
         CHECK(val == 42);
     });
     async_run([TEST_CTX]() -> Task<void> {
-        co_await queueInLoopCoro<void>(app().getLoop(), []() { DebugL; });
+        co_await asyncCoro<void>(app().getLoop(), []() { DebugL; });
     });
 }
 
@@ -172,7 +172,7 @@ DROGON_TEST(CoroutineDestruction)
 
 DROGON_TEST(AsyncWaitLifetime)
 {
-    app().getLoop()->queueInLoop([TEST_CTX]() {
+    app().getLoop()->async([TEST_CTX]() {
         async_run([TEST_CTX]() -> Task<> {
             auto ptr = std::make_shared<std::string>("test");
             CHECK(ptr.use_count() == 1);
@@ -181,7 +181,7 @@ DROGON_TEST(AsyncWaitLifetime)
         });
     });
 
-    app().getLoop()->queueInLoop([TEST_CTX]() {
+    app().getLoop()->async([TEST_CTX]() {
         auto ptr = std::make_shared<std::string>("test");
         async_run([ptr, TEST_CTX]() -> Task<> {
             CHECK(ptr.use_count() == 2);
@@ -191,7 +191,7 @@ DROGON_TEST(AsyncWaitLifetime)
     });
 
     auto ptr = std::make_shared<std::string>("test");
-    app().getLoop()->queueInLoop([ptr, TEST_CTX]() {
+    app().getLoop()->async([ptr, TEST_CTX]() {
         async_run([ptr, TEST_CTX]() -> Task<> {
             co_await sleepCoro(drogon::app().getLoop(), 0.01);
             CHECK(ptr.use_count() == 1);
@@ -199,7 +199,7 @@ DROGON_TEST(AsyncWaitLifetime)
     });
 
     auto ptr2 = std::make_shared<std::string>("test");
-    app().getLoop()->queueInLoop(async_func([ptr2, TEST_CTX]() -> Task<> {
+    app().getLoop()->async(async_func([ptr2, TEST_CTX]() -> Task<> {
         co_await sleepCoro(drogon::app().getLoop(), 0.01);
         CHECK(ptr2.use_count() == 1);
     }));

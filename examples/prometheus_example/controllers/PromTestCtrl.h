@@ -9,7 +9,7 @@ class PromTestCtrl : public drogon::HttpController<PromTestCtrl>
 {
   public:
     METHOD_LIST_BEGIN
-    ADD_METHOD_TO(PromTestCtrl::fast, "/fast", "PromStat");
+    registerMethod(&PromTestCtrl::fast, "/fast", {"PromStat"}, false, "PromTestCtrl::fast");
     ADD_METHOD_TO(PromTestCtrl::slow, "/slow", "PromStat");
     METHOD_LIST_END
 

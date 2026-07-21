@@ -161,8 +161,8 @@ inline std::shared_ptr<toolkit::EventPoller> getIOThreadStorageLoop(size_t index
     {
         throw std::out_of_range("Event loop index is out of range");
     }
-    if (index == drogon::app().getThreadNum())
-        return drogon::app().getLoop();
+    // if (index == drogon::app().getThreadNum())
+    //     return drogon::app().getLoop();
     return drogon::app().getIOLoop(index);
 }
 }  // namespace drogon

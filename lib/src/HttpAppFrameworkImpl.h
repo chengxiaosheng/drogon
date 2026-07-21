@@ -24,11 +24,7 @@
 #include "SessionManager.h"
 #include "drogon/utils/Utilities.h"
 #include "impl_forwards.h"
-
-namespace trantor
-{
-class EventLoopThreadPool;
-}
+#include "Thread/WorkThreadPool.h"
 
 namespace drogon
 {
@@ -74,10 +70,7 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
         override;
     HttpAppFramework &setThreadNum(size_t threadNum) override;
 
-    size_t getThreadNum() const override
-    {
-        return threadNum_;
-    }
+    size_t getThreadNum() const override;
 
     HttpAppFramework &setSSLConfigCommands(
         const std::vector<std::pair<std::string, std::string>> &sslConfCmds)
@@ -260,7 +253,7 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
 
     const std::shared_ptr<trantor::Resolver> &getResolver() const override
     {
-        static auto resolver = trantor::Resolver::newResolver(getLoop());
+        static auto resolver = trantor::Resolver::newResolver();
         return resolver;
     }
 
@@ -703,7 +696,7 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
     std::atomic_bool running_{false};
     std::atomic_bool routersInit_{false};
 
-    size_t threadNum_{1};
+    size_t threadNum_{0};
 
 #if !defined(_WIN32) && !TARGET_OS_IOS
     std::vector<std::string> libFilePaths_;
@@ -743,7 +736,6 @@ class HttpAppFrameworkImpl final : public HttpAppFramework
     std::vector<AdviceStartSessionCallback> sessionStartAdvices_;
     std::vector<AdviceDestroySessionCallback> sessionDestroyAdvices_;
     SessionManager::IdGeneratorCallback sessionIdGeneratorCallback_;
-    std::shared_ptr<trantor::AsyncFileLogger> asyncFileLoggerPtr_;
     Json::Value jsonConfig_;
     Json::Value jsonRuntimeConfig_;
     HttpResponsePtr custom404_;

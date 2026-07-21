@@ -20,6 +20,7 @@
 #include <drogon/version.h>
 #include <json/json.h>
 #include <algorithm>
+#include <csignal>
 #include "AOPAdvice.h"
 #include "ConfigLoader.h"
 #include "DbClientManager.h"
@@ -287,10 +288,12 @@ HttpAppFramework &HttpAppFrameworkImpl::registerWebSocketController(
     const std::string &ctrlName,
     const std::vector<internal::HttpConstraint> &constraints)
 {
-    assert(!routersInit_);
-    HttpControllersRouter::instance().registerWebSocketController(pathName,
-                                                                  ctrlName,
-                                                                  constraints);
+    // assert(!routersInit_);
+    getLoop()->async([=]() {
+        HttpControllersRouter::instance().registerWebSocketController(pathName,
+                                                              ctrlName,
+                                                              constraints);
+    }, running_);
     return *this;
 }
 
@@ -299,9 +302,10 @@ HttpAppFramework &HttpAppFrameworkImpl::registerWebSocketControllerRegex(
     const std::string &ctrlName,
     const std::vector<internal::HttpConstraint> &constraints)
 {
-    assert(!routersInit_);
-    HttpControllersRouter::instance().registerWebSocketControllerRegex(
-        regExp, ctrlName, constraints);
+    getLoop()->async([=]() {
+        HttpControllersRouter::instance().registerWebSocketControllerRegex(regExp, ctrlName, constraints);
+    }, running_);
+
     return *this;
 }
 
@@ -310,10 +314,13 @@ HttpAppFramework &HttpAppFrameworkImpl::registerHttpSimpleController(
     const std::string &ctrlName,
     const std::vector<internal::HttpConstraint> &constraints)
 {
-    assert(!routersInit_);
-    HttpControllersRouter::instance().registerHttpSimpleController(pathName,
+    // assert(!routersInit_);
+    getLoop()->async([=]() {
+        HttpControllersRouter::instance().registerHttpSimpleController(pathName,
                                                                    ctrlName,
                                                                    constraints);
+    }, running_);
+
     return *this;
 }
 
@@ -326,9 +333,12 @@ void HttpAppFrameworkImpl::registerHttpController(
 {
     assert(!pathPattern.empty());
     assert(binder);
-    assert(!routersInit_);
-    HttpControllersRouter::instance().addHttpPath(
+    // assert(!routersInit_);
+    getLoop()->async([=]() {
+        HttpControllersRouter::instance().addHttpPath(
         pathPattern, binder, validMethods, middlewareNames, handlerName);
+    }, running_);
+
 }
 
 void HttpAppFrameworkImpl::registerHttpControllerViaRegex(
@@ -340,20 +350,33 @@ void HttpAppFrameworkImpl::registerHttpControllerViaRegex(
 {
     assert(!regExp.empty());
     assert(binder);
-    assert(!routersInit_);
-    HttpControllersRouter::instance().addHttpRegex(
+    // assert(!routersInit_);
+    getLoop()->async([=]() {
+        HttpControllersRouter::instance().addHttpRegex(
         regExp, binder, validMethods, middlewareNames, handlerName);
+    }, running_);
+
 }
 
 HttpAppFramework &HttpAppFrameworkImpl::setThreadNum(size_t threadNum)
 {
-    if (threadNum == 0)
-    {
-        threadNum_ = std::thread::hardware_concurrency();
-        return *this;
-    }
-    threadNum_ = threadNum;
+    getLoop()->async([threadNum]() {
+        if (!app().isRunning())
+        {
+            instance().threadNum_ = threadNum;
+            toolkit::EventPollerPool::setPoolSize(threadNum);
+        }
+    });
     return *this;
+}
+
+size_t HttpAppFrameworkImpl::getThreadNum() const
+{
+    if (running_)
+    {
+        return toolkit::EventPollerPool::Instance().getExecutorSize();
+    }
+    return threadNum_ == 0  ? std::thread::hardware_concurrency() : threadNum_;
 }
 
 PluginBase *HttpAppFrameworkImpl::getPlugin(const std::string &name)
@@ -542,7 +565,7 @@ void HttpAppFrameworkImpl::run()
         // go daemon!
         godaemon();
 #ifdef __linux__
-        getLoop()->resetTimerQueue();
+        // getLoop()->resetTimerQueue();
 #endif
         // getLoop()->resetAfterFork();
     }
@@ -569,9 +592,9 @@ void HttpAppFrameworkImpl::run()
             InfoL << "start new process";
         }
 #ifdef __linux__
-        getLoop()->resetTimerQueue();
+        // getLoop()->resetTimerQueue();
 #endif
-        getLoop()->resetAfterFork();
+        // getLoop()->resetAfterFork();
 #endif
     }
     if (handleSigterm_)
@@ -612,7 +635,7 @@ void HttpAppFrameworkImpl::run()
 #endif
 
     // Create IO threads
-    toolkit::EventPollerPool::setPoolSize(threadNum_);
+    // toolkit::EventPollerPool::setPoolSize(threadNum_);
     // ioLoopThreadPool_ =
     //     std::make_unique<trantor::EventLoopThreadPool>(threadNum_,
     //                                                    "DrogonIoLoop");
@@ -673,10 +696,12 @@ void HttpAppFrameworkImpl::run()
                                                      // TODO: new plugin
                                                  });
     }
-    routersInit_ = true;
-    HttpControllersRouter::instance().init(/*ioLoops*/);
-    StaticFileRouter::instance().init(/*ioLoops*/);
-    getLoop()->async([this]() {
+
+    main_poller_->async([this]() {
+        HttpControllersRouter::instance().init(/*ioLoops*/);
+        StaticFileRouter::instance().init(/*ioLoops*/);
+        routersInit_ = true;
+
         for (auto &adv : beginningAdvices_)
         {
             adv();
@@ -691,7 +716,7 @@ void HttpAppFrameworkImpl::run()
     // It should be fine for them to start anywhere before `startListening()`.
     // However, we should consider other components.
     // ioLoopThreadPool_->start();
-    getLoop()->runMainLoop();
+    main_poller_->runMainLoop();
 }
 
 HttpAppFramework &HttpAppFrameworkImpl::setUploadPath(
@@ -1022,9 +1047,9 @@ HttpAppFramework &HttpAppFrameworkImpl::createRedisClient(
 
 void HttpAppFrameworkImpl::quit()
 {
-    if (/*getLoop()->isRunning() &&*/ main_poller_ && running_.exchange(false))
+    if (main_poller_ && running_.exchange(false))
     {
-        getLoop()->async([this]() {
+        main_poller_->async_first([this, loop = main_poller_]() {
             // Release members in the reverse order of initialization
             listenerManagerPtr_->stopListening();
             listenerManagerPtr_.reset();
@@ -1033,15 +1058,11 @@ void HttpAppFrameworkImpl::quit()
             pluginsManagerPtr_.reset();
             redisClientManagerPtr_.reset();
             dbClientManagerPtr_.reset();
-            // getLoop()->quit();
-            // for (trantor::EventLoop *loop : ioLoopThreadPool_->getLoops())
-            // {
-            //     loop->quit();
-            // }
-            // ioLoopThreadPool_->wait();
+            sessionManagerPtr_.reset();
+            // 打断主线程事件循环， 让 drogon::run() 函数继续执行
+            throw toolkit::EventPoller::ExitException();
         }, false);
     }
-    main_poller_.reset();
 }
 
 const HttpResponsePtr &HttpAppFrameworkImpl::getCustom404Page()
@@ -1196,7 +1217,7 @@ HttpAppFramework &HttpAppFrameworkImpl::setupFileLogger()
         return *this;
     }
 #endif  // DROGON_SPDLOG_SUPPORT
-    if (!logPath_.empty() && !asyncFileLoggerPtr_)
+    if (!logPath_.empty())
     {
         // std::filesystem does not provide a method to check access
         // permissions, so keep existing code

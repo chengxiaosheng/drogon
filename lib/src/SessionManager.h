@@ -49,7 +49,7 @@ class SessionManager : public toolkit::noncopyable
 
   private:
     std::unique_ptr<CacheMap<std::string, SessionPtr>> sessionMapPtr_;
-    std::shared_ptr<toolkit::EventPoller> loop_;
+    std::weak_ptr<toolkit::EventPoller> loop_;
     size_t timeout_;
     const std::vector<AdviceStartSessionCallback> &sessionStartAdvices_;
     const std::vector<AdviceDestroySessionCallback> &sessionDestroyAdvices_;

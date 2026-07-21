@@ -57,9 +57,9 @@ DbClientImpl::DbClientImpl(const std::string &connInfo,
 #else
                            ClientType type)
 #endif
-    : numberOfConnections_(connNum),
+    : numberOfConnections_(connNum)
 #if LIBPQ_SUPPORTS_BATCH_MODE
-      autoBatch_(autoBatch)
+      ,autoBatch_(autoBatch)
 #endif
       // loops_(type == ClientType::Sqlite3
       //            ? 1

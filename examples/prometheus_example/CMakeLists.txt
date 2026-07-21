@@ -28,7 +28,9 @@ add_executable(${PROJECT_NAME} main.cc)
 # target_link_libraries(${PROJECT_NAME} PRIVATE drogon)
 #
 # and comment out the following lines
-find_package(Drogon CONFIG REQUIRED)
+if(NOT TARGET Drogon::Drogon)
+    find_package(Drogon CONFIG REQUIRED)
+endif ()
 target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
 
 # ##############################################################################

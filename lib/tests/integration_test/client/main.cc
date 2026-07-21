@@ -1230,7 +1230,7 @@ DROGON_TEST(HttpsTest)
         return;
 
     auto client = HttpClient::newHttpClient("https://127.0.0.1:8849",
-                                            app().getLoop(),
+                                            toolkit::EventPollerPool::Instance().getPoller(),
                                             false,
                                             false);
     client->setPipeliningDepth(10);
@@ -1248,7 +1248,7 @@ DROGON_TEST(HttpsTimeoutTest)
         return;
 
     auto client = HttpClient::newHttpClient("https://127.0.0.1:8849",
-                                            app().getLoop(),
+                                            toolkit::EventPollerPool::Instance().getPoller(),
                                             false,
                                             false);
     auto req = HttpRequest::newHttpRequest();
@@ -1263,10 +1263,10 @@ DROGON_TEST(HttpsTimeoutTest)
             REQUIRE(result == ReqResult::Ok);
             CHECK(resp->getStatusCode() == k200OK);
 
-            app().getLoop()->queueInLoop([weakClient, weakReq, TEST_CTX]() {
+            app().getLoop()->async([weakClient, weakReq, TEST_CTX]() {
                 CHECK(weakReq.expired());
                 CHECK(weakClient.expired());
-            });
+            }, false);
         },
         60);
 }
@@ -1280,13 +1280,13 @@ int main(int argc, char **argv)
     std::future<void> f1 = p1.get_future();
 
     std::thread thr([&p1]() {
-        app().getLoop()->queueInLoop([&p1]() { p1.set_value(); });
+        app().getLoop()->async([&p1]() { p1.set_value(); });
         app().run();
     });
 
     f1.get();
     int testStatus = test::run(argc, argv);
-    app().getLoop()->queueInLoop([]() { app().quit(); });
+    app().getLoop()->async([]() { app().quit(); });
     thr.join();
     return testStatus;
 }

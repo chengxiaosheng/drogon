@@ -680,7 +680,7 @@ class DROGON_EXPORT HttpAppFramework : public toolkit::noncopyable
                       "automatically by drogon cannot be "
                       "registered here");
         DrClassMap::setSingleInstance(ctrlPtr);
-        T::initPathRouting();
+        getLoop()->async(&T::initPathRouting, false);
         return *this;
     }
 

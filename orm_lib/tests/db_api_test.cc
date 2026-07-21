@@ -13,12 +13,12 @@ DROGON_TEST(DbApiTest)
         auto client = app().getDbClient("pg_non_fast");
         CHECK(client != nullptr);
         client->closeAll();
-        drogon::app().getLoop()->runInLoop([TEST_CTX]() {
+        drogon::app().getLoop()->async([TEST_CTX]() {
             auto client = app().getFastDbClient("pg_fast");
             CHECK(client != nullptr);
             client->closeAll();
         });
-        drogon::app().getIOLoop(0)->runInLoop([TEST_CTX]() {
+        drogon::app().getIOLoop(0)->async([TEST_CTX]() {
             auto client = app().getFastDbClient("pg_fast");
             CHECK(client != nullptr);
             client->closeAll();
@@ -52,7 +52,7 @@ DROGON_TEST(DbApiTest)
     }
 #endif
 
-    app().getLoop()->runAfter(5, [TEST_CTX]() {});  // wait for some time
+    app().getLoop()->doDelayTask(5 * 1000, [TEST_CTX]() { return 0; });  // wait for some time
 }
 
 const std::string_view pg_non_fast_config = R"({
@@ -174,13 +174,13 @@ int main(int argc, char **argv)
     std::future<void> f1 = p1.get_future();
     app().setThreadNum(1);
     std::thread thr([&]() {
-        app().getLoop()->queueInLoop([&]() { p1.set_value(); });
+        app().getLoop()->async([&]() { p1.set_value(); });
         app().loadConfigJson(config).run();
     });
 
     f1.get();
     int testStatus = test::run(argc, argv);
-    app().getLoop()->queueInLoop([]() { app().quit(); });
+    app().getLoop()->async([]() { app().quit(); });
     thr.join();
     return testStatus;
 }

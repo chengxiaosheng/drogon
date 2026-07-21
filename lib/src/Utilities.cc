@@ -23,6 +23,7 @@
 #include <brotli/encode.h>
 #endif
 #ifdef _WIN32
+#pragma comment(lib, "Rpcrt4.lib")
 #include <rpc.h>
 #include <direct.h>
 #include <io.h>

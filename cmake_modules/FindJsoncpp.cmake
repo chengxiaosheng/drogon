@@ -34,6 +34,52 @@ find_path(JSONCPP_INCLUDE_DIRS
 
 find_library(JSONCPP_LIBRARIES NAMES jsoncpp DOC "jsoncpp library")
 
+# If a system jsoncpp could not be located, fall back to fetching the sources
+# from upstream (https://github.com/open-source-parsers/jsoncpp, tag 1.9.8) and
+# building the static library in-tree so the build stays self-contained on hosts
+# without jsoncpp installed.
+if(NOT JSONCPP_INCLUDE_DIRS OR NOT JSONCPP_LIBRARIES)
+    if(NOT Jsoncpp_FIND_QUIETLY)
+        message(STATUS "jsoncpp not found locally; fetching jsoncpp 1.9.8 from GitHub")
+    endif()
+    if(CMAKE_VERSION VERSION_LESS 3.11)
+        message(FATAL_ERROR
+            "jsoncpp was not found on the system and CMake ${CMAKE_VERSION} is too "
+            "old to fetch it (requires >= 3.11). Install jsoncpp >= 1.7 or upgrade CMake.")
+    endif()
+    include(FetchContent)
+    FetchContent_Declare(
+        jsoncpp_src
+        GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
+        GIT_TAG 1.9.8)
+    # Keep the fetched jsoncpp lean: no tests, no packaging and no install rules
+    # that could clash with drogon's own install step. Build the static target
+    # (jsoncpp_static) that Jsoncpp_lib links against below.
+    set(JSONCPP_WITH_TESTS OFF CACHE BOOL "" FORCE)
+    set(JSONCPP_WITH_POST_BUILD_UNITTEST OFF CACHE BOOL "" FORCE)
+    set(JSONCPP_WITH_PKGCONFIG_SUPPORT OFF CACHE BOOL "" FORCE)
+    set(JSONCPP_WITH_CMAKE_PACKAGE OFF CACHE BOOL "" FORCE)
+    set(JSONCPP_WITH_EXAMPLE OFF CACHE BOOL "" FORCE)
+    set(JSONCPP_WITH_INSTALL OFF CACHE BOOL "" FORCE)
+    set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+    set(BUILD_OBJECT_LIBS OFF CACHE BOOL "" FORCE)
+    set(CMAKE_CXX_STANDARD ${DROGON_CXX_STANDARD})
+    if(CMAKE_VERSION VERSION_LESS 3.14)
+        FetchContent_GetProperties(jsoncpp_src)
+        if(NOT jsoncpp_src_POPULATED)
+            FetchContent_Populate(jsoncpp_src)
+        endif()
+        add_subdirectory(${jsoncpp_src_SOURCE_DIR} ${jsoncpp_src_BINARY_DIR}
+                         EXCLUDE_FROM_ALL)
+    else()
+        FetchContent_MakeAvailable(jsoncpp_src)
+    endif()
+    FetchContent_GetProperties(jsoncpp_src)
+    set(JSONCPP_INCLUDE_DIRS "${jsoncpp_src_SOURCE_DIR}/include")
+    set(JSONCPP_LIBRARIES jsoncpp_static)
+    set(JSONCPP_FETCHED TRUE)
+endif()
+
 # debug library on windows same naming convention as in qt (appending debug
 # library with d) boost is using the same "hack" as us with "optimized" and
 # "debug" if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -80,10 +126,19 @@ if(Jsoncpp_FOUND)
   if (NOT TARGET Jsoncpp_lib)
           add_library(Jsoncpp_lib INTERFACE IMPORTED)
   endif()
-  set_target_properties(Jsoncpp_lib
-                        PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                                   "${JSONCPP_INCLUDE_DIRS}"
-                                   INTERFACE_LINK_LIBRARIES
-                                   "${JSONCPP_LIBRARIES}")
+  if(JSONCPP_FETCHED)
+          # Link the in-tree fetched jsoncpp_static target directly so its
+          # build interface (include dirs, compile features) propagates.
+          set_target_properties(Jsoncpp_lib
+                                PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                                           "${JSONCPP_INCLUDE_DIRS}")
+          target_link_libraries(Jsoncpp_lib INTERFACE ${JSONCPP_LIBRARIES})
+  else()
+          set_target_properties(Jsoncpp_lib
+                                PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                                           "${JSONCPP_INCLUDE_DIRS}"
+                                           INTERFACE_LINK_LIBRARIES
+                                           "${JSONCPP_LIBRARIES}")
+  endif()
 
 endif(Jsoncpp_FOUND)

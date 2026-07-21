@@ -16,11 +16,14 @@
 #include <drogon/config.h>
 #include <fcntl.h>
 #include <Util/logger.h>
+#include <Poller/EventPoller.h>
 #include "HttpAppFrameworkImpl.h"
 #include "HttpServer.h"
 #ifndef _WIN32
 #include <sys/file.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #endif
 
 namespace drogon
@@ -78,122 +81,71 @@ std::vector<trantor::InetAddress> ListenerManager::getListeners() const
 void ListenerManager::createListeners(
     const std::string &globalCertFile,
     const std::string &globalKeyFile,
-    const std::vector<std::pair<std::string, std::string>> &sslConfCmds/*,
-    const std::vector<trantor::EventLoop *> &ioLoops*/)
+    const std::vector<std::pair<std::string, std::string>> &sslConfCmds)
 {
-    TraceL << "thread num=" << ioLoops.size();
-#ifdef __linux__
-    for (size_t i = 0; i < ioLoops.size(); ++i)
+    TraceL << "poller thread num="
+           << toolkit::EventPollerPool::Instance().getExecutorSize();
+    for (auto const &listener : listeners_)
     {
-        for (auto const &listener : listeners_)
+        auto const &ip = listener.ip_;
+        bool isIpv6 = (ip.find(':') != std::string::npos);
+        InetAddress listenAddress(ip, listener.port_, isIpv6);
+        if (listenAddress.isUnspecified())
         {
-            auto const &ip = listener.ip_;
-            bool isIpv6 = (ip.find(':') != std::string::npos);
-            InetAddress listenAddress(ip, listener.port_, isIpv6);
-            if (listenAddress.isUnspecified())
-            {
-                ErrorL << "Failed to parse IP address '" << ip
-                          << "'. (Note: FQDN/domain names/hostnames are not "
-                             "supported. Including 'localhost')";
-                abort();
-            }
-            if (i == 0 && !app().reusePort())
-            {
-                DrogonFileLocker lock;
-                // Check whether the port is in use.
-                TcpServer server(HttpAppFrameworkImpl::instance().getLoop(),
-                                 listenAddress,
-                                 "drogonPortTest",
-                                 true,
-                                 false);
-            }
-            std::shared_ptr<HttpServer> serverPtr =
-                std::make_shared<HttpServer>(ioLoops[i],
-                                             listenAddress,
-                                             "drogon");
-            if (beforeListenSetSockOptCallback_)
-            {
-                serverPtr->setBeforeListenSockOptCallback(
-                    beforeListenSetSockOptCallback_);
-            }
-            if (afterAcceptSetSockOptCallback_)
-            {
-                serverPtr->setAfterAcceptSockOptCallback(
-                    afterAcceptSetSockOptCallback_);
-            }
-            if (connectionCallback_)
-            {
-                serverPtr->setConnectionCallback(connectionCallback_);
-            }
-
-            if (listener.useSSL_ && utils::supportsTls())
-            {
-                auto cert = listener.certFile_;
-                auto key = listener.keyFile_;
-                if (cert.empty())
-                    cert = globalCertFile;
-                if (key.empty())
-                    key = globalKeyFile;
-                if (cert.empty() || key.empty())
-                {
-                    std::cerr
-                        << "You can't use https without cert file or key file"
-                        << std::endl;
-                    exit(1);
-                }
-                auto cmds = sslConfCmds;
-                std::copy(listener.sslConfCmds_.begin(),
-                          listener.sslConfCmds_.end(),
-                          std::back_inserter(cmds));
-                auto policy =
-                    trantor::TLSPolicy::defaultServerPolicy(cert, key);
-                policy->setConfCmds(cmds).setUseOldTLS(listener.useOldTLS_);
-                serverPtr->enableSSL(std::move(policy));
-            }
-            servers_.push_back(serverPtr);
+            ErrorL << "Failed to parse IP address '" << ip
+                      << "'. (Note: FQDN/domain names/hostnames are not "
+                         "supported. Including 'localhost')";
+            abort();
         }
-    }
-#else
-
-    if (!listeners_.empty())
-    {
-        listeningThread_ =
-            std::make_unique<EventLoopThread>("DrogonListeningLoop");
-        listeningThread_->run();
-        for (auto const &listener : listeners_)
+// #ifndef _WIN32
+//         if (!app().reusePort())
+//         {
+//             DrogonFileLocker lock;
+//             // 跨实例协调（端口占用由 toolkit::TcpServer::start 检测并报错）
+//         }
+// #endif
+        auto serverPtr = std::make_shared<HttpServer>(listenAddress, "drogon");
+        if (beforeListenSetSockOptCallback_)
         {
-            auto ip = listener.ip_;
-            bool isIpv6 = (ip.find(':') != std::string::npos);
-            auto serverPtr = std::make_shared<HttpServer>(
-                listeningThread_->getLoop(),
-                InetAddress(ip, listener.port_, isIpv6),
-                "drogon");
-            if (listener.useSSL_ && utils::supportsTls())
-            {
-                auto cert = listener.certFile_;
-                auto key = listener.keyFile_;
-                if (cert.empty())
-                    cert = globalCertFile;
-                if (key.empty())
-                    key = globalKeyFile;
-                if (cert.empty() || key.empty())
-                {
-                    std::cerr
-                        << "You can't use https without cert file or key file"
-                        << std::endl;
-                    exit(1);
-                }
-                auto cmds = sslConfCmds;
-                auto policy =
-                    trantor::TLSPolicy::defaultServerPolicy(cert, key);
-                policy->setConfCmds(cmds).setUseOldTLS(listener.useOldTLS_);
-                serverPtr->enableSSL(std::move(policy));
-            }
-            serverPtr->setIoLoops(ioLoops);
-            servers_.push_back(serverPtr);
+            serverPtr->setBeforeListenSockOptCallback(
+                beforeListenSetSockOptCallback_);
         }
+        if (afterAcceptSetSockOptCallback_)
+        {
+            serverPtr->setAfterAcceptSockOptCallback(
+                afterAcceptSetSockOptCallback_);
+        }
+        if (connectionCallback_)
+        {
+            serverPtr->setConnectionCallback(connectionCallback_);
+        }
+
+        if (listener.useSSL_ && utils::supportsTls())
+        {
+            auto cert = listener.certFile_;
+            auto key = listener.keyFile_;
+            if (cert.empty())
+                cert = globalCertFile;
+            if (key.empty())
+                key = globalKeyFile;
+            if (cert.empty() || key.empty())
+            {
+                std::cerr
+                    << "You can't use https without cert file or key file"
+                    << std::endl;
+                exit(1);
+            }
+            auto cmds = sslConfCmds;
+            std::copy(listener.sslConfCmds_.begin(),
+                      listener.sslConfCmds_.end(),
+                      std::back_inserter(cmds));
+            auto policy =
+                trantor::TLSPolicy::defaultServerPolicy(cert, key);
+            policy->setConfCmds(cmds).setUseOldTLS(listener.useOldTLS_);
+            serverPtr->enableSSL(std::move(policy));
+        }
+        servers_.push_back(serverPtr);
     }
-#endif
 }
 
 void ListenerManager::startListening()
@@ -209,13 +161,6 @@ void ListenerManager::stopListening()
     for (auto &serverPtr : servers_)
     {
         serverPtr->stop();
-    }
-    if (listeningThread_)
-    {
-        auto loop = listeningThread_->getLoop();
-        assert(!loop->isInLoopThread());
-        loop->quit();
-        listeningThread_->wait();
     }
 }
 

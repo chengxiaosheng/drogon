@@ -70,3 +70,6 @@ set_property(TARGET ${example_targets}
              PROPERTY CXX_STANDARD ${DROGON_CXX_STANDARD})
 set_property(TARGET ${example_targets} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${example_targets} PROPERTY CXX_EXTENSIONS OFF)
+
+add_subdirectory(redis_cache)
+add_subdirectory(prometheus_example)

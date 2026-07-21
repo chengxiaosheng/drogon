@@ -14,7 +14,12 @@
 
 #pragma once
 
-#include <trantor/net/TcpServer.h>
+#include <Network/TcpServer.h>       // toolkit::TcpServer
+#include <Network/Session.h>         // toolkit::SessionWithTLSPolicy
+#include "HttpSession.h"
+#include <trantor/net/InetAddress.h>
+#include <trantor/net/TLSPolicy.h>
+#include <Util/SSLBox.h>             // toolkit::TLSSessionFactory
 #include <Util/util.h>
 #include <functional>
 #include <string>
@@ -30,33 +35,33 @@ struct ControllerBinderBase;
 class HttpServer : toolkit::noncopyable
 {
   public:
-    HttpServer(trantor::EventLoop *loop,
-               const trantor::InetAddress &listenAddr,
-               std::string name);
+    HttpServer(const trantor::InetAddress &listenAddr, std::string name);
 
     ~HttpServer();
-
-    void setIoLoops(const std::vector<trantor::EventLoop *> &ioLoops)
-    {
-        server_.setIoLoops(ioLoops);
-    }
 
     void start();
     void stop();
 
     void enableSSL(trantor::TLSPolicyPtr policy)
     {
-        server_.enableSSL(std::move(policy));
+        tlsPolicyPtr_ = std::move(policy);
     }
 
-    void reloadSSL()
-    {
-        server_.reloadSSL();
-    }
+    void reloadSSL();
 
     const trantor::InetAddress &address() const
     {
-        return server_.address();
+        return listenAddr_;
+    }
+
+    std::string ipPort() const
+    {
+        return listenAddr_.toIpPort();
+    }
+
+    const std::string &name() const
+    {
+        return name_;
     }
 
     void setBeforeListenSockOptCallback(std::function<void(int)> cb)
@@ -73,6 +78,11 @@ class HttpServer : toolkit::noncopyable
         std::function<void(const trantor::TcpConnectionPtr &)> cb)
     {
         connectionCallback_ = std::move(cb);
+    }
+
+    void kickoffIdleConnections(size_t timeout)
+    {
+        idleConnectionTimeout_ = timeout;
     }
 
   private:
@@ -146,7 +156,15 @@ class HttpServer : toolkit::noncopyable
         const std::vector<std::pair<HttpResponsePtr, bool>> &responses,
         trantor::MsgBuffer &buffer);
 
-    trantor::TcpServer server_;
+    trantor::InetAddress listenAddr_;
+    std::string name_;
+    std::shared_ptr<toolkit::TcpServer> server_;  // nullptr poller -> 多 poller 抢占式 accept
+    trantor::TLSPolicyPtr tlsPolicyPtr_;
+    size_t idleConnectionTimeout_{0};
+
+    // 按 useSSL 选择 Session 类型启动 toolkit::TcpServer
+    template <typename SessionT>
+    void startWith();
 
     std::function<void(int)> beforeListenSetSockOptCallback_;
     std::function<void(int)> afterAcceptSetSockOptCallback_;

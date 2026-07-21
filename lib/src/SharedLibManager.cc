@@ -16,6 +16,7 @@
 
 #include "Poller/Timer.h"
 #include "Thread/WorkThreadPool.h"
+#include "drogon/HttpAppFramework.h"
 
 #include <drogon/config.h>
 #include <dirent.h>
@@ -117,14 +118,17 @@ using namespace drogon;
 
 SharedLibManager::SharedLibManager(const std::vector<std::string> &libPaths,
                                    const std::string &outputPath)
-    : libPaths_(libPaths), outputPath_(outputPath),workingThread_(toolkit::WorkThreadPool::Instance().getPoller())
+    : libPaths_(libPaths), outputPath_(outputPath),workingThread_(app().getLoop())
 {
-    timeId_ = std::make_shared<toolkit::Timer>(5.0, [this]() { managerLibs(); }, workingThread_);
+    timeId_ = workingThread_.lock()->doDelayTask(5.0 * 1000, [this]() {
+        managerLibs();
+        return 5.0 * 1000;
+    });
 }
 
 SharedLibManager::~SharedLibManager()
 {
-    workingThread_.getLoop()->invalidateTimer(timeId_);
+    timeId_.reset();
 }
 
 void SharedLibManager::managerLibs()
@@ -234,10 +238,12 @@ void SharedLibManager::managerLibs()
                             dlStat.handle = dlMap_[filename].handle;
                             dlMap_[filename] = dlStat;
                         }
-                        workingThread_.getLoop()->runAfter(3.5, [lockFile]() {
+
+                        workingThread_.lock()->doDelayTask(3.5 * 1000, [lockFile]() {
                             TraceL << "remove file " << lockFile;
                             if (unlink(lockFile.c_str()) == -1)
                                 perror("");
+                            return 0;
                         });
                     }
                 }

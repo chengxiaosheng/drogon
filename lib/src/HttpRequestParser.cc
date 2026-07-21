@@ -91,7 +91,7 @@ HttpRequestImplPtr HttpRequestParser::makeRequestForPool(HttpRequestImpl *ptr)
             auto thisPtr = weakPtr.lock();
             if (thisPtr)
             {
-                if (thisPtr->loop_->isInLoopThread())
+                if (thisPtr->loop_->isCurrentThread())
                 {
                     p->reset();
                     thisPtr->requestsPool_.emplace_back(
@@ -100,11 +100,11 @@ HttpRequestImplPtr HttpRequestParser::makeRequestForPool(HttpRequestImpl *ptr)
                 else
                 {
                     auto &loop = thisPtr->loop_;
-                    loop->queueInLoop([thisPtr = std::move(thisPtr), p]() {
+                    loop->async([thisPtr = std::move(thisPtr), p]() {
                         p->reset();
                         thisPtr->requestsPool_.emplace_back(
                             thisPtr->makeRequestForPool(p));
-                    });
+                    }, false);
                 }
             }
             else
@@ -116,7 +116,7 @@ HttpRequestImplPtr HttpRequestParser::makeRequestForPool(HttpRequestImpl *ptr)
 
 void HttpRequestParser::reset()
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     remainContentLength_ = 0;
     status_ = HttpRequestParseStatus::kExpectMethod;
     if (requestsPool_.empty())
@@ -456,7 +456,7 @@ int HttpRequestParser::parseRequest(MsgBuffer *buf)
 void HttpRequestParser::pushRequestToPipelining(const HttpRequestPtr &req,
                                                 bool isHeadMethod)
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     requestPipelining_.push_back({req, {nullptr, isHeadMethod}});
 }
 
@@ -466,7 +466,7 @@ void HttpRequestParser::pushRequestToPipelining(const HttpRequestPtr &req,
 bool HttpRequestParser::pushResponseToPipelining(const HttpRequestPtr &req,
                                                  HttpResponsePtr resp)
 {
-    assert(loop_->isInLoopThread());
+    assert(loop_->isCurrentThread());
     for (size_t i = 0; i != requestPipelining_.size(); ++i)
     {
         if (requestPipelining_[i].first == req)

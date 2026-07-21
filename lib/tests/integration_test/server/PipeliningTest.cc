@@ -22,22 +22,24 @@ void PipeliningTest::normalPipe(
     if (c % 3 == 2)
     {
         // call the callback in another thread.
-        drogon::app().getLoop()->runAfter(delay, [c, callback]() {
+        drogon::app().getLoop()->doDelayTask(delay * 1000, [c, callback]() {
             auto resp = HttpResponse::newHttpResponse();
             auto str = utils::formattedString("<P>the %dth response</P>", c);
             resp->addHeader("counter", utils::formattedString("%d", c));
             resp->setBody(std::move(str));
             callback(resp);
+            return 0;
         });
         return;
     }
-    trantor::EventLoop::getEventLoopOfCurrentThread()->runAfter(
-        delay, [c, callback]() {
+    toolkit::EventPollerPool::Instance().getPoller()->doDelayTask(
+        delay * 1000, [c, callback]() {
             auto resp = HttpResponse::newHttpResponse();
             auto str = utils::formattedString("<P>the %dth response</P>", c);
             resp->addHeader("counter", utils::formattedString("%d", c));
             resp->setBody(std::move(str));
             callback(resp);
+            return 0;
         });
 }
 

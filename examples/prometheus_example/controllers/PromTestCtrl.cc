@@ -18,7 +18,7 @@ drogon::AsyncTask PromTestCtrl::slow(
     static std::once_flag flag;
     std::call_once(flag, []() { srand(time(nullptr)); });
     auto duration = 1 + (rand() % 3);
-    auto loop = trantor::EventLoop::getEventLoopOfCurrentThread();
+    auto loop = toolkit::EventPollerPool::Instance().getPoller();//  trantor::EventLoop::getEventLoopOfCurrentThread();
     co_await drogon::sleepCoro(loop, std::chrono::seconds(duration));
     auto resp = HttpResponse::newHttpResponse();
     resp->setBody("Hello, world!");

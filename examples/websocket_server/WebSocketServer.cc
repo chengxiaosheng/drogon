@@ -69,5 +69,7 @@ void WebSocketChat::handleNewConnection(const HttpRequestPtr &req,
 
 int main()
 {
-    app().addListener("127.0.0.1", 8848).run();
+    // toolkit::EventPollerPool::setPoolSize(16);
+    drogon::app().setThreadNum(2);
+    app().addListener("::", 18848).run();
 }

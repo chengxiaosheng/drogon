@@ -63,14 +63,14 @@ int main(int argc, char **argv)
             .setSSLFiles("server.crt", "server.key")
             .addListener("0.0.0.0", 8855, true)
             .enableSession();
-        app().getLoop()->queueInLoop([&p1]() { p1.set_value(); });
+        app().getLoop()->async([&p1]() { p1.set_value(); });
         app().run();
     });
 
     f1.get();
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     int testStatus = test::run(argc, argv);
-    app().getLoop()->queueInLoop([]() { app().quit(); });
+    app().getLoop()->async([]() { app().quit(); });
     thr.join();
     return testStatus;
 }
