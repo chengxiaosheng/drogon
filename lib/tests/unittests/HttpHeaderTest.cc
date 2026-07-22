@@ -2,6 +2,7 @@
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
 #include "../../lib/src/HttpResponseImpl.h"
+#include <Network/Buffer.h>
 
 using namespace drogon;
 
@@ -50,6 +51,38 @@ DROGON_TEST(ResponseSetCustomContentTypeString)
     resp = HttpResponse::newHttpResponse();
     resp->setContentTypeString("thisdoesnotexist/unknown");
     CHECK(resp->getContentType() == CT_CUSTOM);
+}
+
+DROGON_TEST(ResponseBufferBody)
+{
+    auto resp = std::dynamic_pointer_cast<HttpResponseImpl>(
+        HttpResponse::newHttpResponse());
+    REQUIRE(resp != nullptr);
+    resp->setContentTypeCode(CT_TEXT_PLAIN);
+
+    // 用 toolkit::Buffer 承载 body（零拷贝发送路径）
+    auto buf = toolkit::BufferRaw::create();
+    buf->assign("hello-buffer-body", 17);
+    resp->setBody(buf);
+
+    CHECK(resp->bodyIsBuffer());
+    CHECK(resp->getBodyLength() == 17);
+    CHECK(resp->bufferBody() != nullptr);
+    CHECK(resp->bufferBody()->size() == 17);
+    CHECK(std::string(resp->getBodyData(), resp->getBodyLength()) ==
+          "hello-buffer-body");
+
+    // renderToBuffer() 对 Buffer body 仅返回头部（不含 body 内容）
+    auto headerOnly = resp->renderToBuffer();
+    auto headerStr =
+        std::string{headerOnly->peek(), headerOnly->readableBytes()};
+    CHECK(headerStr.find("hello-buffer-body") == std::string::npos);
+
+    // renderToBuffer(MsgBuffer&) 应包含 body（拷贝兜底，供 pipelining）
+    trantor::MsgBuffer mb(256);
+    resp->renderToBuffer(mb);
+    auto fullStr = std::string{mb.peek(), mb.readableBytes()};
+    CHECK(fullStr.find("hello-buffer-body") != std::string::npos);
 }
 
 DROGON_TEST(ResquestSetCustomContentTypeString)

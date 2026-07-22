@@ -22,8 +22,9 @@ void checkStreamRequest(T &&TEST_CTX,
     auto respString = std::make_shared<std::string>();
     tcpClient->setMessageCallback(
         [respString](const trantor::TcpConnectionPtr &conn,
-                     trantor::MsgBuffer *buf) {
-            respString->append(buf->read(buf->readableBytes()));
+                     trantor::ParseCursor *buf) {
+            respString->append(buf->peek(), buf->readableBytes());
+            buf->retrieveAll();
         });
     tcpClient->setConnectionCallback(
         [TEST_CTX, &promise, respString, dataToSend, expectedResp](

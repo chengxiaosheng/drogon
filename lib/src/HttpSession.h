@@ -100,4 +100,4 @@ class HttpSession : public toolkit::Session
     size_t idleTimeout_{0};
 };
 
-}  // namespace trantor
+}  // namespace drogon

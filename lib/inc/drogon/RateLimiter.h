@@ -4,6 +4,7 @@
 #include <chrono>
 #include <mutex>
 #include <string>
+#include <utility>
 
 namespace drogon
 {
@@ -56,7 +57,7 @@ class DROGON_EXPORT RateLimiter
 class DROGON_EXPORT SafeRateLimiter : public RateLimiter
 {
   public:
-    SafeRateLimiter(RateLimiterPtr limiter) : limiter_(limiter)
+    SafeRateLimiter(RateLimiterPtr limiter) : limiter_(std::move(limiter))
     {
     }
 

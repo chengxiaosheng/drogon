@@ -140,7 +140,7 @@ void HttpRequestParser::reset()
  * @return return 2 if request is ready and entering stream mode
  * @return return 3 if request header is ready and entering stream mode
  */
-int HttpRequestParser::parseRequest(MsgBuffer *buf)
+int HttpRequestParser::parseRequest(ParseCursor *buf)
 {
     while (true)
     {

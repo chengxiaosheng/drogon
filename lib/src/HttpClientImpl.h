@@ -175,7 +175,7 @@ class HttpClientImpl final : public HttpClient,
     void createTcpClient();
     std::queue<std::pair<HttpRequestPtr, HttpReqCallback>> pipeliningCallbacks_;
     std::list<std::pair<HttpRequestPtr, HttpReqCallback>> requestsBuffer_;
-    void onRecvMessage(const trantor::TcpConnectionPtr &, trantor::MsgBuffer *);
+    void onRecvMessage(const trantor::TcpConnectionPtr &, trantor::ParseCursor *);
     void onError(ReqResult result);
     std::string domain_;
     bool isDomainName_{true};  // true if domain_ is name

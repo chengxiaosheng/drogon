@@ -106,9 +106,9 @@ class WebSocketClientImpl
 
     void connectToServerInLoop();
     void sendReq(const trantor::TcpConnectionPtr &connPtr);
-    void onRecvMessage(const trantor::TcpConnectionPtr &, trantor::MsgBuffer *);
+    void onRecvMessage(const trantor::TcpConnectionPtr &, trantor::ParseCursor *);
     void onRecvWsMessage(const trantor::TcpConnectionPtr &,
-                         trantor::MsgBuffer *);
+                         trantor::ParseCursor *);
     void reconnect();
     void createTcpClient();
     std::shared_ptr<trantor::Resolver> resolver_;

@@ -815,6 +815,9 @@ void HttpResponseImpl::renderToBuffer(trantor::MsgBuffer &buffer)
     {
         auto strPtr = renderToBuffer();
         buffer.append(strPtr->peek(), strPtr->readableBytes());
+        // Buffer body 不缓存为单一字符串：renderToBuffer() 仅返回头部，此处补 body
+        if (bodyIsBuffer() && contentLengthIsAllowed())
+            buffer.append(bufferBody()->data(), bufferBody()->size());
         return;
     }
 
@@ -854,7 +857,7 @@ void HttpResponseImpl::renderToBuffer(trantor::MsgBuffer &buffer)
 
 std::shared_ptr<trantor::MsgBuffer> HttpResponseImpl::renderToBuffer()
 {
-    if (expriedTime_ >= 0)
+    if (expriedTime_ >= 0 && !bodyIsBuffer())
     {
         if (!passThrough_ &&
             drogon::HttpAppFrameworkImpl::instance().sendDateHeader())
@@ -916,7 +919,8 @@ std::shared_ptr<trantor::MsgBuffer> HttpResponseImpl::renderToBuffer()
         auto datePos = httpString->readableBytes();
         httpString->append(utils::getHttpFullDateStr(trantor::Date::date()));
         httpString->append("\r\n\r\n");
-        datePos_ = datePos;
+        if (!bodyIsBuffer())
+            datePos_ = datePos;
     }
     else
     {
@@ -926,9 +930,9 @@ std::shared_ptr<trantor::MsgBuffer> HttpResponseImpl::renderToBuffer()
     TraceL << "response(no body):"
               << std::string_view{httpString->peek(),
                                   httpString->readableBytes()};
-    if (bodyPtr_)
+    if (bodyPtr_ && !bodyIsBuffer())
         httpString->append(bodyPtr_->data(), bodyPtr_->length());
-    if (expriedTime_ >= 0)
+    if (expriedTime_ >= 0 && !bodyIsBuffer())
     {
         httpString_ = httpString;
     }

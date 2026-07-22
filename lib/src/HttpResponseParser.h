@@ -43,7 +43,7 @@ class HttpResponseParser : public toolkit::noncopyable
     // default copy-ctor, dtor and assignment are fine
 
     // return false if any error
-    bool parseResponse(trantor::MsgBuffer *buf);
+    bool parseResponse(trantor::ParseCursor *buf);
     bool parseResponseOnClose();
 
     bool gotAll() const

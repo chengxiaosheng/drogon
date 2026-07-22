@@ -190,7 +190,7 @@ void HttpServer::onConnection(const TcpConnectionPtr &conn)
     }
 }
 
-void HttpServer::onMessage(const TcpConnectionPtr &conn, MsgBuffer *buf)
+void HttpServer::onMessage(const TcpConnectionPtr &conn, ParseCursor *buf)
 {
     if (!conn->hasContext())
         return;
@@ -1019,6 +1019,8 @@ void HttpServer::sendResponse(const TcpConnectionPtr &conn,
         conn->send(httpString);
         if (!respImplPtr->contentLengthIsAllowed())
             return;
+        if (respImplPtr->bodyIsBuffer())
+            conn->send(respImplPtr->bufferBody());
         auto &asyncStreamCallback = respImplPtr->asyncStreamCallback();
         if (asyncStreamCallback)
         {

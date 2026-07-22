@@ -121,7 +121,7 @@ void HttpClientImpl::createTcpClient()
     });
     tcpClientPtr_->setMessageCallback(
         [weakPtr](const trantor::TcpConnectionPtr &connPtr,
-                  trantor::MsgBuffer *msg) {
+                  trantor::ParseCursor *msg) {
             auto thisPtr = weakPtr.lock();
             if (thisPtr)
             {
@@ -604,7 +604,7 @@ void HttpClientImpl::handleResponse(
 }
 
 void HttpClientImpl::onRecvMessage(const trantor::TcpConnectionPtr &connPtr,
-                                   trantor::MsgBuffer *msg)
+                                   trantor::ParseCursor *msg)
 {
     auto responseParser = connPtr->getContext<HttpResponseParser>();
 

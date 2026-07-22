@@ -90,7 +90,7 @@ class HttpServer : toolkit::noncopyable
 
     static void onConnection(const trantor::TcpConnectionPtr &conn);
     static void onMessage(const trantor::TcpConnectionPtr &,
-                          trantor::MsgBuffer *);
+                          trantor::ParseCursor *);
     static void onRequests(const trantor::TcpConnectionPtr &,
                            const std::vector<HttpRequestImplPtr> &,
                            const std::shared_ptr<HttpRequestParser> &);

@@ -266,7 +266,7 @@ void WebSocketConnectionImpl::disablePing()
     }
 }
 
-bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
+bool WebSocketMessageParser::parse(trantor::ParseCursor *buffer)
 {
     // According to the rfc6455
     gotAll_ = false;
@@ -428,7 +428,7 @@ bool WebSocketMessageParser::parse(trantor::MsgBuffer *buffer)
 
 void WebSocketConnectionImpl::onNewMessage(
     const trantor::TcpConnectionPtr &connPtr,
-    trantor::MsgBuffer *buffer)
+    trantor::ParseCursor *buffer)
 {
     auto self = shared_from_this();
     while (buffer->readableBytes() > 0)

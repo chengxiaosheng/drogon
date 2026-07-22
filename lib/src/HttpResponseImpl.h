@@ -231,6 +231,15 @@ class DROGON_EXPORT HttpResponseImpl : public HttpResponse
         }
     }
 
+    void setBody(std::shared_ptr<toolkit::Buffer> body) override
+    {
+        bodyPtr_ = std::make_shared<HttpMessageBufferBody>(std::move(body));
+        if (passThrough_)
+        {
+            addHeader("content-length", std::to_string(bodyPtr_->length()));
+        }
+    }
+
     void redirect(const std::string &url)
     {
         headers_["location"] = url;
@@ -274,6 +283,21 @@ class DROGON_EXPORT HttpResponseImpl : public HttpResponse
         if (bodyPtr_)
             return bodyPtr_->length();
         return 0;
+    }
+
+    /// body 是否为 toolkit::Buffer 后端（零拷贝发送路径用）
+    bool bodyIsBuffer() const
+    {
+        return bodyPtr_ &&
+               bodyPtr_->bodyType() == HttpMessageBody::BodyType::kBuffer;
+    }
+    /// 取 Buffer 后端的底层 Buffer（非 Buffer body 返回 nullptr）
+    std::shared_ptr<toolkit::Buffer> bufferBody() const
+    {
+        if (bodyIsBuffer())
+            return std::static_pointer_cast<HttpMessageBufferBody>(bodyPtr_)
+                ->buffer();
+        return nullptr;
     }
 
     void swap(HttpResponseImpl &that) noexcept;

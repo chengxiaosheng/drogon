@@ -28,6 +28,11 @@
 #include <string>
 #include <string_view>
 
+namespace toolkit
+{
+class Buffer;
+}
+
 namespace drogon
 {
 /// Abstract class for webapp developer to get or set the Http response;
@@ -300,6 +305,12 @@ class DROGON_EXPORT HttpResponse
 
     /// Set the response body(content).
     virtual void setBody(std::string &&body) = 0;
+
+    /// Set the response body(content) backed by a toolkit::Buffer.
+    /// The body is sent zero-copy (header and buffer are dispatched as
+    /// separate send calls). Not cached as a single rendered string.
+    /// @note The body must match the content type
+    virtual void setBody(std::shared_ptr<toolkit::Buffer> body) = 0;
 
     /// Set the response body(content).
     template <int N>

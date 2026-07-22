@@ -86,7 +86,7 @@ bool HttpResponseParser::parseResponseOnClose()
 }
 
 // return false if any error
-bool HttpResponseParser::parseResponse(MsgBuffer *buf)
+bool HttpResponseParser::parseResponse(ParseCursor *buf)
 {
     bool ok = true;
     bool hasMore = true;

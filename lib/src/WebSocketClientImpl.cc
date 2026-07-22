@@ -108,7 +108,7 @@ void WebSocketClientImpl::createTcpClient()
     });
     tcpClientPtr_->setMessageCallback(
         [weakPtr](const trantor::TcpConnectionPtr &connPtr,
-                  trantor::MsgBuffer *msg) {
+                  trantor::ParseCursor *msg) {
             auto thisPtr = weakPtr.lock();
             if (thisPtr)
             {
@@ -215,7 +215,7 @@ void WebSocketClientImpl::connectToServerInLoop()
 
 void WebSocketClientImpl::onRecvWsMessage(
     const trantor::TcpConnectionPtr &connPtr,
-    trantor::MsgBuffer *msgBuffer)
+    trantor::ParseCursor *msgBuffer)
 {
     if (websockConnPtr_)
     {
@@ -225,7 +225,7 @@ void WebSocketClientImpl::onRecvWsMessage(
 
 void WebSocketClientImpl::onRecvMessage(
     const trantor::TcpConnectionPtr &connPtr,
-    trantor::MsgBuffer *msgBuffer)
+    trantor::ParseCursor *msgBuffer)
 {
     if (upgraded_)
     {
