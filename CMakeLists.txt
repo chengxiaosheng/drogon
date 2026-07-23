@@ -66,6 +66,15 @@ if (DROGON_USE_LLHTTP OR DROGON_BUILD_PARSER_BENCH)
         URL https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.4.2.tar.gz
     )
     FetchContent_MakeAvailable(llhttp)
+    # llhttp is built as a static library. When drogon itself is built as a
+    # shared library, llhttp's objects must be position-independent (-fPIC)
+    # or the link fails with "relocation R_X86_64_PC32 ... can not be used
+    # when making a shared object; recompile with -fPIC". ZLToolKit already
+    # adds -fPIC itself; llhttp does not, so enable it here.
+    if (BUILD_SHARED_LIBS AND TARGET llhttp_static)
+        set_target_properties(llhttp_static PROPERTIES
+            POSITION_INDEPENDENT_CODE ON)
+    endif ()
 endif()
 
 add_library(${PROJECT_NAME})

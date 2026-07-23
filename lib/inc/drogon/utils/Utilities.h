@@ -29,6 +29,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <type_traits>
+#include <utility>
 #ifdef _WIN32
 #include <time.h>
 DROGON_EXPORT char *strptime(const char *s, const char *f, struct tm *tm);
@@ -234,7 +235,7 @@ inline std::string trim(std::string &&str)
     pos = str.find_first_not_of(" \t");
     if (pos > 0)
         str.erase(0, pos);
-    return str;
+    return std::move(str);
 }
 
 /*! \brief Split a string_view into a vector of string_views.
