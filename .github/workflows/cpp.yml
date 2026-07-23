@@ -15,7 +15,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dos2unix
-        run: sudo apt-get install -y dos2unix
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dos2unix
 
       - name: Install clang-format-17
         run: |
