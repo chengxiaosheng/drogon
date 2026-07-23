@@ -41,6 +41,7 @@ set(INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR} CACHE PATH "Installation dir
 set(DEF_INSTALL_DROGON_CMAKE_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/Drogon)
 set(INSTALL_DROGON_CMAKE_DIR ${DEF_INSTALL_DROGON_CMAKE_DIR}
     CACHE PATH "Installation directory for cmake files")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # Force MSVC to use UTF-8 because that's what we use. Otherwise it uses
@@ -61,6 +62,7 @@ if (DROGON_USE_LLHTTP OR DROGON_BUILD_PARSER_BENCH)
     set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(LLHTTP_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(LLHTTP_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     FetchContent_Declare(
         llhttp
         URL https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.4.2.tar.gz
