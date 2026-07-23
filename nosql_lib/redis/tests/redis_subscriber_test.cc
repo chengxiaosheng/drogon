@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 
     f1.get();
     int testStatus = drogon::test::run(argc, argv);
-    drogon::app().getLoop()->queueInLoop([]() { drogon::app().quit(); });
+    drogon::app().getLoop()->async([]() { drogon::app().quit(); }, false);
     thr.join();
     return testStatus;
 }
