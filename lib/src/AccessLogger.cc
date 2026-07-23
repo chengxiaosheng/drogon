@@ -158,7 +158,7 @@ void AccessLogger::initAndStart(const Json::Value &config)
     auto file_channel = std::make_shared<toolkit::FileChannel>("accessChannel", "./log/access/");
     logger_->add(file_channel);
     logger_->setLevel(toolkit::LInfo);
-
+#if 0
 #ifdef DROGON_SPDLOG_SUPPORT
     auto logWithSpdlog = trantor::Logger::hasSpdLogSupport() &&
                          config.get("use_spdlog", false).asBool();
@@ -228,6 +228,7 @@ void AccessLogger::initAndStart(const Json::Value &config)
         }
     }
     else
+#endif
 #endif
         if (!logPath.empty())
     {

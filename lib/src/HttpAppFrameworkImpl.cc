@@ -482,9 +482,9 @@ HttpAppFramework &HttpAppFrameworkImpl::setLogPath(
     size_t maxFiles,
     bool useSpdlog)
 {
-#ifdef DROGON_SPDLOG_SUPPORT
-    logWithSpdlog_ = trantor::Logger::hasSpdLogSupport() && useSpdlog;
-#endif
+// #ifdef DROGON_SPDLOG_SUPPORT
+//     logWithSpdlog_ = trantor::Logger::hasSpdLogSupport() && useSpdlog;
+// #endif
     if (logPath.empty())
         return *this;
     // std::filesystem does not provide a method to check access permissions, so
@@ -1149,6 +1149,7 @@ HttpAppFramework &HttpAppFrameworkImpl::setDefaultHandler(
 
 HttpAppFramework &HttpAppFrameworkImpl::setupFileLogger()
 {
+#if 0
 #ifdef DROGON_SPDLOG_SUPPORT
     if (logWithSpdlog_)
     {
@@ -1213,6 +1214,7 @@ HttpAppFramework &HttpAppFrameworkImpl::setupFileLogger()
         return *this;
     }
 #endif  // DROGON_SPDLOG_SUPPORT
+#endif
     if (!logPath_.empty())
     {
         // std::filesystem does not provide a method to check access
