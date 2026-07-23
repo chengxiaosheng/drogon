@@ -13,6 +13,9 @@ option(BUILD_DOC "Build Doxygen documentation" OFF)
 option(BUILD_BROTLI "Build Brotli" ON)
 option(BUILD_YAML_CONFIG "Build yaml config" ON)
 option(USE_STATIC_LIBS_ONLY "Use only static libraries as dependencies" OFF)
+option(DROGON_BUILD_PARSER_BENCH "Build the HTTP parser microbenchmark" ON)
+option(DROGON_USE_LLHTTP "Use llhttp for HTTP/1.x parsing" ON)
+option(DROGON_LLHTTP_LENIENT "Lenient cosmetic parsing with llhttp" ON)
 
 include(CMakeDependentOption)
 CMAKE_DEPENDENT_OPTION(BUILD_POSTGRESQL "Build with postgresql support" ON "BUILD_ORM" OFF)
@@ -51,6 +54,18 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     add_compile_options("/Zc:__cplusplus")
   endif()
 endif ()
+
+if (DROGON_USE_LLHTTP OR DROGON_BUILD_PARSER_BENCH)
+    include(FetchContent)
+    set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(LLHTTP_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(LLHTTP_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        llhttp
+        URL https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.4.2.tar.gz
+    )
+    FetchContent_MakeAvailable(llhttp)
+endif()
 
 add_library(${PROJECT_NAME})
 if (BUILD_SHARED_LIBS)
@@ -276,10 +291,13 @@ set(DROGON_SOURCES
     lib/src/HttpFileImpl.cc
     lib/src/HttpFileUploadRequest.cc
     lib/src/HttpRequestImpl.cc
-    lib/src/HttpRequestParser.cc
+    lib/src/HttpRequestParserCommon.cc
+    $<$<BOOL:${DROGON_USE_LLHTTP}>:lib/src/HttpRequestParserLlhttp.cc>
+    $<$<NOT:$<BOOL:${DROGON_USE_LLHTTP}>>:lib/src/HttpRequestParser.cc>
     lib/src/RequestStream.cc
     lib/src/HttpResponseImpl.cc
-    lib/src/HttpResponseParser.cc
+    $<$<BOOL:${DROGON_USE_LLHTTP}>:lib/src/HttpResponseParserLlhttp.cc>
+    $<$<NOT:$<BOOL:${DROGON_USE_LLHTTP}>>:lib/src/HttpResponseParser.cc>
     lib/src/HttpServer.cc
     lib/src/HttpUtils.cc
     lib/src/HttpViewData.cc
@@ -509,6 +527,14 @@ endif (BUILD_TESTING)
 
 find_package(ZLIB REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE ZLIB::ZLIB)
+if (DROGON_USE_LLHTTP)
+    target_link_libraries(${PROJECT_NAME} PRIVATE llhttp::llhttp)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${llhttp_SOURCE_DIR}/include)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DROGON_USE_LLHTTP)
+    if (DROGON_LLHTTP_LENIENT)
+        target_compile_definitions(${PROJECT_NAME} PRIVATE DROGON_LLHTTP_LENIENT)
+    endif ()
+endif ()
 
 execute_process(COMMAND "git" rev-parse HEAD
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -679,6 +705,9 @@ if (BUILD_TESTING)
     message(STATUS "Building tests")
     enable_testing()
     add_subdirectory(lib/tests)
+    if (DROGON_BUILD_PARSER_BENCH)
+        add_subdirectory(lib/tests/parser_bench)
+    endif (DROGON_BUILD_PARSER_BENCH)
     if (pg_FOUND)
         add_subdirectory(${PROJECT_SOURCE_DIR}/orm_lib/src/postgresql_impl/test)
     endif (pg_FOUND)

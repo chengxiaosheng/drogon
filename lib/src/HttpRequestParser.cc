@@ -31,7 +31,7 @@ static constexpr size_t TRUNK_LEN_MAX_LEN = 16;  // 0xFFFFFFFF,FFFFFFFF
 
 HttpRequestParser::HttpRequestParser(const trantor::TcpConnectionPtr &connPtr)
     : status_(HttpRequestParseStatus::kExpectMethod),
-      loop_(connPtr->getLoop()),
+      loop_(connPtr ? connPtr->getLoop() : nullptr),
       conn_(connPtr)
 {
 }
@@ -84,39 +84,11 @@ bool HttpRequestParser::processRequestLine(const char *begin, const char *end)
     return succeed;
 }
 
-HttpRequestImplPtr HttpRequestParser::makeRequestForPool(HttpRequestImpl *ptr)
-{
-    return std::shared_ptr<HttpRequestImpl>(
-        ptr, [weakPtr = weak_from_this()](HttpRequestImpl *p) {
-            auto thisPtr = weakPtr.lock();
-            if (thisPtr)
-            {
-                if (thisPtr->loop_->isCurrentThread())
-                {
-                    p->reset();
-                    thisPtr->requestsPool_.emplace_back(
-                        thisPtr->makeRequestForPool(p));
-                }
-                else
-                {
-                    auto &loop = thisPtr->loop_;
-                    loop->async([thisPtr = std::move(thisPtr), p]() {
-                        p->reset();
-                        thisPtr->requestsPool_.emplace_back(
-                            thisPtr->makeRequestForPool(p));
-                    }, false);
-                }
-            }
-            else
-            {
-                delete p;
-            }
-        });
-}
 
 void HttpRequestParser::reset()
 {
-    assert(loop_->isCurrentThread());
+    if (loop_)
+        assert(loop_->isCurrentThread());
     remainContentLength_ = 0;
     status_ = HttpRequestParseStatus::kExpectMethod;
     if (requestsPool_.empty())
@@ -453,39 +425,3 @@ int HttpRequestParser::parseRequest(ParseCursor *buf)
     return -1;  // won't reach here, just to make compiler happy
 }
 
-void HttpRequestParser::pushRequestToPipelining(const HttpRequestPtr &req,
-                                                bool isHeadMethod)
-{
-    assert(loop_->isCurrentThread());
-    requestPipelining_.push_back({req, {nullptr, isHeadMethod}});
-}
-
-/**
- * @return returns true if the the response is the first in pipeline
- */
-bool HttpRequestParser::pushResponseToPipelining(const HttpRequestPtr &req,
-                                                 HttpResponsePtr resp)
-{
-    assert(loop_->isCurrentThread());
-    for (size_t i = 0; i != requestPipelining_.size(); ++i)
-    {
-        if (requestPipelining_[i].first == req)
-        {
-            requestPipelining_[i].second.first = std::move(resp);
-            return i == 0;
-        }
-    }
-    assert(false);  // Should always find a match
-    return false;
-}
-
-void HttpRequestParser::popReadyResponses(
-    std::vector<std::pair<HttpResponsePtr, bool>> &buffer)
-{
-    while (!requestPipelining_.empty() &&
-           requestPipelining_.front().second.first)
-    {
-        buffer.push_back(std::move(requestPipelining_.front().second));
-        requestPipelining_.pop_front();
-    }
-}

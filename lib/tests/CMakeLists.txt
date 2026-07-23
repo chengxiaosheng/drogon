@@ -28,6 +28,8 @@ set(UNITTEST_SOURCES
     unittests/SlashRemoverTest.cc
     unittests/UtilitiesTest.cc
     unittests/UuidUnittest.cc
+    unittests/HttpRequestParserTest.cc
+    unittests/HttpResponseParserTest.cc
 )
 
 if(DROGON_CXX_STANDARD GREATER_EQUAL 20 AND HAS_COROUTINE)
@@ -49,6 +51,15 @@ else()
 endif()
 
 add_executable(unittest ${UNITTEST_SOURCES})
+
+if (DROGON_USE_LLHTTP)
+    target_include_directories(unittest PRIVATE /include)
+    target_link_libraries(unittest PRIVATE llhttp::llhttp)
+    target_compile_definitions(unittest PRIVATE DROGON_USE_LLHTTP)
+    if (DROGON_LLHTTP_LENIENT)
+        target_compile_definitions(unittest PRIVATE DROGON_LLHTTP_LENIENT)
+    endif ()
+endif ()
 
 if (BUILD_CTL)
   set(INTEGRATION_TEST_CLIENT_SOURCES

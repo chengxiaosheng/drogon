@@ -178,7 +178,8 @@ bool HttpResponseParser::parseResponse(ParseCursor *buf)
                             {
                                 status_ = HttpResponseParseStatus::kExpectClose;
                                 auto connPtr = conn_.lock();
-                                connPtr->shutdown();
+                                if (connPtr)
+                                    connPtr->shutdown();
                                 hasMore = true;
                             }
                         }

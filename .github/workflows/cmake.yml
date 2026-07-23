@@ -308,3 +308,103 @@ jobs:
         # Execute tests defined by the CMake configuration.
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ./test.sh -t
+
+  llhttp-ubuntu:
+    # DROGON_USE_LLHTTP=ON build leg (plan §5): gcc, runs the full test.sh
+    # (unittest + integration) against the llhttp adapter.
+    name: llhttp (ubuntu, gcc, ON)
+    runs-on: ubuntu-22.04
+    env:
+      CXX: g++-12
+    steps:
+      - name: Checkout Drogon source code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt-get install -y libjsoncpp-dev uuid-dev libssl-dev zlib1g-dev libsqlite3-dev ninja-build libbrotli-dev libspdlog-dev
+
+      - name: Install postgresql
+        run: |
+          sudo apt-get --purge remove postgresql postgresql-doc postgresql-common postgresql-client-common || true
+          sudo apt-get -y install postgresql-all
+
+      - name: Create Build Environment & Configure Cmake
+        run: |
+          cmake -B build -G Ninja          \
+            -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+            -DBUILD_TESTING=on             \
+            -DUSE_SPDLOG=ON                \
+            -DBUILD_SHARED_LIBS=OFF        \
+            -DDROGON_USE_LLHTTP=ON
+
+      - name: Build
+        working-directory: ./build
+        run: ninja && sudo ninja install
+
+      - name: Prepare for testing
+        run: |
+          sudo systemctl start postgresql
+          for _ in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres; then
+              break
+            fi
+            sleep 1
+          done
+          pg_isready -h 127.0.0.1 -p 5432 -U postgres
+          sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '12345'" postgres
+
+      - name: Test
+        run: ./test.sh -t
+
+  llhttp-windows:
+    # DROGON_USE_LLHTTP=ON build leg (plan §5): MSVC, runs test.sh against the
+    # llhttp adapter.
+    name: llhttp (windows, msvc, ON)
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Drogon source code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: pip install conan
+
+      - name: Create build directory
+        run: mkdir build
+
+      - name: Install conan packages
+        working-directory: ./build
+        run: |
+          conan profile detect
+          conan install .. -s compiler="msvc" -sbuild_type=Debug --build=missing -s compiler.cppstd=17
+
+      - name: Create Build Environment & Configure Cmake
+        shell: bash
+        working-directory: ./build
+        run: |
+          cmake ..                                         \
+            -DCMAKE_BUILD_TYPE=Debug                       \
+            -DBUILD_TESTING=on                             \
+            -DBUILD_SHARED_LIBS=OFF                        \
+            -DDROGON_USE_LLHTTP=ON                         \
+            -DCMAKE_TOOLCHAIN_FILE="conan_toolchain.cmake" \
+            -DBUILD_CTL=ON                                 \
+            -DBUILD_EXAMPLES=ON                            \
+            -DUSE_SPDLOG=ON                                \
+            -DCMAKE_INSTALL_PREFIX=../install              \
+            -DCMAKE_POLICY_DEFAULT_CMP0091=NEW             \
+            -DCMAKE_CXX_STANDARD=17
+
+      - name: Build
+        run: cmake --build build --target install --parallel
+
+      - name: Test
+        shell: bash
+        run: ./test.sh -w
