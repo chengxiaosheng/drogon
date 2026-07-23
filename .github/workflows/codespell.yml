@@ -3,9 +3,9 @@
 name: codespell
 on:
   push:
-    branches: [master]
+    branches: [with_zlt]
   pull_request:
-    branches: [master]
+    branches: [with_zlt]
 jobs:
   codespell:
     runs-on: ubuntu-latest

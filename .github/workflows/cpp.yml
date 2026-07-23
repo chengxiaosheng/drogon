@@ -2,7 +2,7 @@ name: C++
 
 on:
   push:
-    branches: [master]
+    branches: [with_zlt]
   pull_request:
 
 permissions:
