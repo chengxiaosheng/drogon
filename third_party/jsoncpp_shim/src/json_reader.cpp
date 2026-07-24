@@ -47,7 +47,7 @@ bool CharReaderBuilder::validate(Json::Value *) const
 class YyjsonCharReader : public CharReader
 {
   public:
-    yyjson_read_flag flags{YYJSON_READ_NOFLAG};
+    yyjson_read_flag flags{YYJSON_READ_JSON5};
     bool allowComments{true};
 
     bool parse(char const *beginDoc,
@@ -59,8 +59,10 @@ class YyjsonCharReader : public CharReader
             return false;
         size_t len = endDoc > beginDoc ? static_cast<size_t>(endDoc - beginDoc) : 0;
         yyjson_read_flag flg = flags;
-        if (allowComments)
-            flg = yyjson_read_flag(flg | YYJSON_READ_ALLOW_COMMENTS);
+        if (!allowComments)
+        {
+            flg = yyjson_read_flag(flg & ~YYJSON_READ_ALLOW_COMMENTS);
+        }
         yyjson_read_err err;
         yyjson_doc *idoc =
             yyjson_read_opts(const_cast<char *>(beginDoc), len, flg, nullptr, &err);
