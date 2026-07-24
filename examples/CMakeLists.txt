@@ -71,5 +71,7 @@ set_property(TARGET ${example_targets}
 set_property(TARGET ${example_targets} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${example_targets} PROPERTY CXX_EXTENSIONS OFF)
 
-add_subdirectory(redis_cache)
+if(USE_COROUTINE)
+    add_subdirectory(redis_cache)
+endif ()
 add_subdirectory(prometheus_example)

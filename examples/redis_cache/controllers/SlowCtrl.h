@@ -1,4 +1,5 @@
 #pragma once
+#include "drogon/utils/coroutine.h"
 #include <drogon/HttpController.h>
 using namespace drogon;
 

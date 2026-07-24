@@ -129,7 +129,7 @@ elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
 else ()
     set(DROGON_CXX_STANDARD 17)
 endif ()
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD ${DROGON_CXX_STANDARD})
 
 if(NOT TARGET ZLToolKit)
     add_subdirectory(third_party/zltoolkit)
