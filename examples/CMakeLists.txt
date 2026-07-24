@@ -73,5 +73,5 @@ set_property(TARGET ${example_targets} PROPERTY CXX_EXTENSIONS OFF)
 
 if(USE_COROUTINE)
     add_subdirectory(redis_cache)
+    add_subdirectory(prometheus_example)
 endif ()
-add_subdirectory(prometheus_example)
