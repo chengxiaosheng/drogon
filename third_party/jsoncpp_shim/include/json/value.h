@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <sstream>
 
 typedef struct yyjson_val yyjson_val;
 typedef struct yyjson_doc yyjson_doc;
@@ -182,6 +183,11 @@ class Value
 
     bool operator==(Value const &other) const;
     bool operator!=(Value const &other) const;
+
+    friend std::ostream& operator<<(std::ostream &os, const Value &val) {
+        os << val.toStyledString();
+        return os;
+    }
 
   private:
     friend struct Doc;
