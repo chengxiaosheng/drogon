@@ -26,7 +26,7 @@ class JSON_API CharReaderBuilder
     Value &operator[](const JSONCPP_STRING &key);
     Value const &operator[](const JSONCPP_STRING &key) const;
 
-    std::unique_ptr<CharReader> newCharReader() const;
+    CharReader * newCharReader() const;
 
     // jsoncpp exposes these; kept for compatibility.
     void getValidReaderKeys(std::vector<JSONCPP_STRING> *validKeys) const;

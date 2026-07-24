@@ -81,9 +81,9 @@ class YyjsonCharReader : public CharReader
     }
 };
 
-std::unique_ptr<CharReader> CharReaderBuilder::newCharReader() const
+CharReader * CharReaderBuilder::newCharReader() const
 {
-    auto r = std::make_unique<YyjsonCharReader>();
+    auto r = new YyjsonCharReader();
     // operator[] returns a borrowed handle (no default-Value allocation);
     // "allowComments" is set by the constructor.
     r->allowComments = settings_["allowComments"].asBool();
