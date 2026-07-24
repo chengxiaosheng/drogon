@@ -65,7 +65,7 @@ class HttpRequestImpl : public HttpRequest
     friend class ::HttpRequestImplCacheFileTestAccess;
 
     explicit HttpRequestImpl(const std::shared_ptr<toolkit::EventPoller> &loop)
-        : creationDate_(trantor::Date::now()), loop_(loop)
+        : creationDate_(trantor::Date::now()), loop_(loop ? loop : toolkit::EventPoller::getCurrentPoller())
     {
     }
 

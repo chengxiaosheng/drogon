@@ -1,0 +1,24 @@
+﻿# Package config file for jsoncpp_shim.
+#
+# Defines imported targets:
+#   jsoncpp_shim::jsoncpp_shim  -- the shim static library
+#   jsoncpp_shim::yyjson        -- the bundled yyjson static library
+#
+# Bare-name aliases (jsoncpp_shim, yyjson) are also created so that projects
+# which link the shim by its unqualified target name (e.g. drogon links the
+# "jsoncpp_static" alias which resolves to "jsoncpp_shim") can resolve the
+# target without knowing the jsoncpp_shim:: namespace.
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/jsoncpp_shim-targets.cmake")
+
+# Bare-name aliases (requires CMake >= 3.11 for ALIAS on IMPORTED targets).
+if(NOT TARGET jsoncpp_shim AND TARGET jsoncpp_shim::jsoncpp_shim)
+    add_library(jsoncpp_shim ALIAS jsoncpp_shim::jsoncpp_shim)
+endif()
+if(NOT TARGET yyjson AND TARGET jsoncpp_shim::yyjson)
+    add_library(yyjson ALIAS jsoncpp_shim::yyjson)
+endif()
+
+check_required_components(jsoncpp_shim)

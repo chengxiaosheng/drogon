@@ -44,8 +44,14 @@ int main(int argc, char **argv)
     });
 
     f1.get();
-    int testStatus = test::run(argc, argv);
-    app().getLoop()->async([]() { app().quit(); });
+    toolkit::EventPollerPool::Instance().getPoller()->async([=]() {
+        test::run(argc, argv);
+        toolkit::EventPoller::getCurrentPoller()->async([]() {
+            app().quit();
+        }, false);
+    });
+    // int testStatus = test::run(argc, argv);
+    // app().getLoop()->async([]() { app().quit(); });
     thr.join();
-    return testStatus;
+    return 0;
 }

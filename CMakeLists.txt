@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5...3.31)
+﻿cmake_minimum_required(VERSION 3.5...3.31)
 
 project(drogon)
 
@@ -129,6 +129,7 @@ elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
 else ()
     set(DROGON_CXX_STANDARD 17)
 endif ()
+set(CMAKE_CXX_STANDARD 20)
 
 if(NOT TARGET ZLToolKit)
     add_subdirectory(third_party/zltoolkit)
@@ -200,33 +201,8 @@ endif()
 # JSON backend: jsoncpp (default) or the yyjson-backed jsoncpp shim (DROGON_USE_YYJSON).
 if(DROGON_USE_YYJSON)
   message(STATUS "Using yyjson-backed jsoncpp shim")
-  include(FetchContent)
-  set(YYJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(YYJSON_INSTALL OFF CACHE BOOL "" FORCE)
-  FetchContent_Declare(yyjson
-      URL https://github.com/ibireme/yyjson/archive/refs/tags/0.10.0.tar.gz)
-  FetchContent_MakeAvailable(yyjson)
-  set_target_properties(yyjson PROPERTIES EXCLUDE_FROM_ALL TRUE)
-  target_sources(${PROJECT_NAME} PRIVATE ${yyjson_SOURCE_DIR}/src/yyjson.c)
-  set_source_files_properties(${yyjson_SOURCE_DIR}/src/yyjson.c PROPERTIES LANGUAGE C)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${yyjson_SOURCE_DIR}/src)
-  target_sources(${PROJECT_NAME} PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/src/json_value.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/src/json_reader.cpp
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/src/json_writer.cpp)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/src)
-  target_include_directories(${PROJECT_NAME} PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include>
-      $<INSTALL_INTERFACE:${INSTALL_INCLUDE_DIR}>)
-  target_compile_definitions(${PROJECT_NAME} PUBLIC DROGON_USE_YYJSON DROGON_JSONCPP_SHIM)
-  list(APPEND INCLUDE_DIRS_FOR_DYNAMIC_VIEW ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include)
-  list(APPEND DROGON_SHIM_HEADERS
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include/json/json.h
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include/json/forwards.h
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include/json/config.h
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include/json/value.h
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include/json/reader.h
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/jsoncpp_shim/include/json/writer.h)
+  add_subdirectory(third_party/jsoncpp_shim)
+  target_link_libraries(${PROJECT_NAME} PUBLIC jsoncpp_static)
 else()
   # jsoncpp
   find_package(jsoncpp QUIET CONFIG)
@@ -891,12 +867,6 @@ install(EXPORT DrogonTargets
     DESTINATION "${INSTALL_DROGON_CMAKE_DIR}"
     NAMESPACE Drogon::
     COMPONENT dev)
-
-# Install the yyjson-backed jsoncpp shim headers when that backend is selected.
-if(DROGON_USE_YYJSON)
-  install(FILES ${DROGON_SHIM_HEADERS}
-      DESTINATION ${INSTALL_INCLUDE_DIR}/json)
-endif()
 
 # Doxygen documentation
 find_package(Doxygen OPTIONAL_COMPONENTS dot dia)

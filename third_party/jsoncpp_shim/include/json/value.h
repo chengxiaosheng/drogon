@@ -73,6 +73,15 @@ class Value
     using iterator = class ValueIterator;
     using const_iterator = class ValueConstIterator;
 
+    using Int = Json::Int;
+    using UInt = Json::UInt;
+    using Int64 = Json::Int64;
+    using UInt64 = Json::UInt64;
+    using LargestInt = Json::LargestInt;
+    using LargestUInt = Json::LargestUInt;
+
+    using String = std::string;
+
     Value();
     Value(Value const &other);
     Value(Value &&other) noexcept;

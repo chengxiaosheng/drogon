@@ -1,4 +1,4 @@
-# - Config file for the Drogon package
+﻿# - Config file for the Drogon package
 # It defines the following variables
 #  DROGON_INCLUDE_DIRS - include directories for Drogon
 #  DROGON_LIBRARIES    - libraries to link against
@@ -17,6 +17,10 @@ find_package(jsoncpp QUIET CONFIG)
 if(NOT jsoncpp_FOUND)
   find_dependency(Jsoncpp MODULE REQUIRED)
 endif()
+endif()
+
+if(@DROGON_USE_YYJSON@)
+find_dependency(jsoncpp_shim)
 endif()
 
 find_dependency(ZLToolKit REQUIRED)

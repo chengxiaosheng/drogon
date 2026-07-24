@@ -43,7 +43,8 @@ static bool yaml2json(const Node &node, Json::Value &jsonValue)
         }
 
         Json::Value v(node.Scalar());
-        jsonValue.swapPayload(v);
+        jsonValue = node.Scalar();
+        // jsonValue.swapPayload(v);
         return true;
     }
     else if (node.IsSequence())
