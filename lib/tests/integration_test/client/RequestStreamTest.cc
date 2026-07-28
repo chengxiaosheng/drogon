@@ -27,6 +27,7 @@ void checkStreamRequest(T &&TEST_CTX,
                      trantor::ParseCursor *buf) {
             respString->append(buf->peek(), buf->readableBytes());
             buf->retrieveAll();
+            conn->shutdown();
         });
     tcpClient->setConnectionCallback(
         [TEST_CTX, &promise, respString, dataToSend, expectedResp](
@@ -44,9 +45,7 @@ void checkStreamRequest(T &&TEST_CTX,
             for (auto &data : dataToSend)
             {
                 conn->send(data.data(), data.size());
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-            conn->shutdown();
         });
     tcpClient->connect();
     promise.get_future().wait();
