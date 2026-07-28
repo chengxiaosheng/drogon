@@ -83,7 +83,7 @@ jobs:
 
       - name: Install dependencies
         # Already installed: brotli, zlib, lz4, sqlite3
-        run: brew install ninja jsoncpp mariadb hiredis redis spdlog postgresql@14
+        run: brew install ninja jsoncpp mariadb hiredis redis postgresql@14
 
       - name: Create Build Environment & Configure Cmake
         # Some projects don't allow in-source building, so create a separate build directory
@@ -92,7 +92,6 @@ jobs:
           cmake -B build -G Ninja          \
             -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
             -DBUILD_TESTING=on             \
-            -DUSE_SPDLOG=ON                \
             -DBUILD_SHARED_LIBS=OFF
 
       - name: Build
@@ -201,7 +200,7 @@ jobs:
           # These aren't available or don't work well in vcpkg
           sudo apt-get install -y libjsoncpp-dev uuid-dev libssl-dev zlib1g-dev libsqlite3-dev
           sudo apt-get install -y ninja-build libbrotli-dev
-          sudo apt-get install -y libspdlog-dev
+#          sudo apt-get install -y libspdlog-dev
 
       - name: Install postgresql
         run: |
@@ -329,7 +328,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt-get install -y libjsoncpp-dev uuid-dev libssl-dev zlib1g-dev libsqlite3-dev ninja-build libbrotli-dev libspdlog-dev
+          sudo apt-get install -y libjsoncpp-dev uuid-dev libssl-dev zlib1g-dev libsqlite3-dev ninja-build libbrotli-dev
 
       - name: Install postgresql
         run: |
