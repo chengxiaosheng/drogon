@@ -50,8 +50,6 @@ int main(int argc, char **argv)
             app().quit();
         }, false);
     });
-    // int testStatus = test::run(argc, argv);
-    // app().getLoop()->async([]() { app().quit(); });
     thr.join();
     return 0;
 }

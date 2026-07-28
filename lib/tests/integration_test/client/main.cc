@@ -15,6 +15,8 @@
 // Make a http client to test the example server app;
 
 #define DROGON_TEST_MAIN
+#include "Thread/WorkThreadPool.h"
+
 #include <drogon/drogon.h>
 #include <trantor/net/TcpClient.h>
 #include <drogon/HttpAppFramework.h>
@@ -78,6 +80,7 @@ void doTest(const HttpClientPtr &client, std::shared_ptr<test::Case> TEST_CTX)
                         [req, client, TEST_CTX](ReqResult result,
                                                 const HttpResponsePtr &resp) {
                             REQUIRE(result == ReqResult::Ok);
+                            WarnL << "/test_begin_advice = "  << resp->getBody();
                             CHECK(resp->getBody() == "DrogonReady");
                         });
 
@@ -1213,7 +1216,7 @@ void loadFileLengths()
 
 DROGON_TEST(HttpTest)
 {
-    auto client = HttpClient::newHttpClient("http://127.0.0.1:8848");
+    auto client = HttpClient::newHttpClient("http://127.0.0.1:8848", toolkit::WorkThreadPool::Instance().getPoller());
     client->setPipeliningDepth(10);
     REQUIRE(client->secure() == false);
     REQUIRE(client->port() == 8848);
@@ -1248,7 +1251,7 @@ DROGON_TEST(HttpsTimeoutTest)
 
     auto client = HttpClient::newHttpClient("https://127.0.0.1:8849",
                                             toolkit::EventPollerPool::Instance().getPoller(),
-                                            false,
+                                            true,
                                             false);
     auto req = HttpRequest::newHttpRequest();
     req->setPath("/api/v1/apitest/static");
@@ -1273,19 +1276,24 @@ DROGON_TEST(HttpsTimeoutTest)
 int main(int argc, char **argv)
 {
     toolkit::Logger::Instance().setLevel(toolkit::LDebug);
+    toolkit::Logger::Instance().setWriter(std::make_shared<toolkit::AsyncLogWriter>());
+    toolkit::Logger::Instance().add(std::make_shared<toolkit::FileChannel>());
+
     loadFileLengths();
 
     std::promise<void> p1;
     std::future<void> f1 = p1.get_future();
 
-    std::thread thr([&p1]() {
-        app().getLoop()->async([&p1]() { p1.set_value(); });
+    std::thread thr([&]() {
+        p1.set_value();
         app().run();
     });
 
     f1.get();
     int testStatus = test::run(argc, argv);
-    app().getLoop()->async([]() { app().quit(); });
+    app().getLoop()->async([]() {
+        app().quit();
+    }, false);
     thr.join();
     return testStatus;
 }

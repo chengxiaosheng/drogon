@@ -17,7 +17,7 @@ static WebSocketClientPtr wsPtr_;
 
 DROGON_TEST(WebSocketTest)
 {
-    wsPtr_ = WebSocketClient::newWebSocketClient("127.0.0.1", 8848);
+    wsPtr_ = WebSocketClient::newWebSocketClient("127.0.0.1", 8848, false, app().getLoop());
     auto pack = std::make_shared<DataPack *>(new DataPack{wsPtr_, TEST_CTX});
     auto req = HttpRequest::newHttpRequest();
     req->setPath("/chat");

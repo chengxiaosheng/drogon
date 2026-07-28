@@ -207,8 +207,13 @@ int HttpResponseParser::onMessageComplete()
         responsePtr_->removeHeaderBy("transfer-encoding");
     }
     status_ = HttpResponseParseStatus::kGotAll;
-    llhttp_pause(&llhttpParser_);
-    return 0;
+    // llhttp 9.x: 必须返回 HPE_PAUSED 才能在消息边界中止当前 llhttp_execute()。
+    // 不能在回调内调用 llhttp_pause()——它只让“下一次” execute 返回 HPE_PAUSED，
+    // 当前 execute 会越过边界，把后续 pipelined 响应的 header/body 并入同一个
+    // responsePtr_，造成响应错乱（见 llhttp.h 对 llhttp_pause 的说明）。
+    // onRecvMessage 在 gotAll() 后会 reset()->llhttp_init()，已清除 paused 状态，
+    // 故无需 llhttp_resume()。
+    return HPE_PAUSED;
 }
 
 bool HttpResponseParser::parseResponse(ParseCursor *buf)

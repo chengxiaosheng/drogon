@@ -50,10 +50,14 @@ void WebSocketClientImpl::stop()
 void WebSocketClientImpl::createTcpClient()
 {
     TraceL << "New TcpClient," << serverAddr_.toIpPort();
-    tcpClientPtr_ =
-        std::make_shared<trantor::TcpClient>(loop_, serverAddr_, "httpClient");
     if (useSSL_)
     {
+        // TLS 必须实例化 TcpClientWithTLSPolicy 包装器：基类 trantor::TcpClient 的
+        // setTLSPolicy() 是空操作，若用基类则 enableSSL() 不生效，连接退化为明文
+        // TCP，HTTPS/WSS 服务器无法收到有效请求。
+        tcpClientPtr_ = std::make_shared<
+            toolkit::TcpClientWithTLSPolicy<trantor::TcpClient>>(
+            loop_, serverAddr_, "httpClient");
         auto policy = trantor::TLSPolicy::defaultClientPolicy();
         policy->setUseOldTLS(useOldTLS_)
             .setValidate(validateCert_)
@@ -62,6 +66,11 @@ void WebSocketClientImpl::createTcpClient()
             .setCertPath(clientCertPath_)
             .setKeyPath(clientKeyPath_);
         tcpClientPtr_->enableSSL(std::move(policy));
+    }
+    else
+    {
+        tcpClientPtr_ =
+            std::make_shared<trantor::TcpClient>(loop_, serverAddr_, "httpClient");
     }
     auto thisPtr = shared_from_this();
     std::weak_ptr<WebSocketClientImpl> weakPtr = thisPtr;
@@ -319,12 +328,16 @@ WebSocketClientImpl::WebSocketClientImpl(const std::shared_ptr<toolkit::EventPol
                                          bool useSSL,
                                          bool useOldTLS,
                                          bool validateCert)
-    : loop_(loop),
+    : loop_(loop ? loop : toolkit::EventPoller::getCurrentPoller()),
       serverAddr_(addr),
       useSSL_(useSSL),
       useOldTLS_(useOldTLS),
       validateCert_(validateCert)
 {
+    if (!loop_)
+    {
+        loop_ = toolkit::EventPollerPool::Instance().getPoller();
+    }
     if (addr.isUnspecified())
         ErrorL << "Bad IP passed to WebSocket client";
 }
@@ -333,8 +346,12 @@ WebSocketClientImpl::WebSocketClientImpl(const std::shared_ptr<toolkit::EventPol
                                          const std::string &hostString,
                                          bool useOldTLS,
                                          bool validateCert)
-    : loop_(loop), useOldTLS_(useOldTLS), validateCert_(validateCert)
+    : loop_(loop ? loop : toolkit::EventPoller::getCurrentPoller()), useOldTLS_(useOldTLS), validateCert_(validateCert)
 {
+    if (!loop_)
+    {
+        loop_ = toolkit::EventPollerPool::Instance().getPoller();
+    }
     auto lowerHost = hostString;
     std::transform(lowerHost.begin(),
                    lowerHost.end(),
@@ -453,7 +470,7 @@ void WebSocketClientImpl::connectToServer(
             thisPtr->upgradeRequest_ = request;
             thisPtr->requestCallback_ = callback;
             thisPtr->connectToServerInLoop();
-        });
+        }, false);
     }
 }
 
@@ -481,7 +498,7 @@ WebSocketClientPtr WebSocketClient::newWebSocketClient(const std::string &ip,
                                                        bool validateCert)
 {
     bool isIpv6 = ip.find(':') == std::string::npos ? false : true;
-    auto poller = loop ? loop : toolkit::EventPollerPool::Instance().getPoller();
+    auto poller = loop ? loop : toolkit::EventPoller::getCurrentPoller();
     return std::make_shared<WebSocketClientImpl>(
         poller,
         trantor::InetAddress(ip, port, isIpv6),

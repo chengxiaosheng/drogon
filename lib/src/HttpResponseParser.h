@@ -91,8 +91,8 @@ class HttpResponseParser : public toolkit::noncopyable
     int onBody(const char *at, size_t len);
     int onMessageComplete();
     void initLlhttpState();
-    llhttp_t llhttpParser_;
-    llhttp_settings_t settings_;
+    llhttp_t llhttpParser_{};
+    llhttp_settings_t settings_{};
     std::string headerLine_;
     size_t headerColonPos_{0};
     bool headerValueStarted_{false};

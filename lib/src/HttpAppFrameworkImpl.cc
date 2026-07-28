@@ -531,6 +531,22 @@ HttpAppFramework &HttpAppFrameworkImpl::setSSLFiles(const std::string &certPath,
 {
     sslCertPath_ = certPath;
     sslKeyPath_ = keyPath;
+    // 同步将证书加载进 toolkit::SSL_Initor 全局默认证书：回退到全局 SSL_Initor 的
+    // TLS 路径（未配置独立 TLSPolicy 的服务端/客户端）依赖该默认上下文。
+    if (utils::supportsTls() && !certPath.empty() && !keyPath.empty())
+    {
+        if (!toolkit::SSL_Initor::Instance().loadCertificate(certPath,
+                                                             keyPath,
+                                                             true,
+                                                             "",
+                                                             true,
+                                                             true))
+        {
+            ErrorL << "Failed to load SSL certificate into SSL_Initor default "
+                      "context: cert="
+                   << certPath << ", key=" << keyPath;
+        }
+    }
     return *this;
 }
 

@@ -19,7 +19,7 @@ DROGON_TEST(MultipleWsTest)
 {
     for (size_t i = 0; i < kClientCount; i++)
     {
-        auto wsPtr = WebSocketClient::newWebSocketClient("127.0.0.1", 8848);
+        auto wsPtr = WebSocketClient::newWebSocketClient("127.0.0.1", 8848, false, app().getLoop());
         auto pack = std::make_shared<DataPack *>(new DataPack{wsPtr, TEST_CTX});
 
         wsPtr->setMessageHandler(

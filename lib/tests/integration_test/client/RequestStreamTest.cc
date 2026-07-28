@@ -1,3 +1,5 @@
+#include "drogon/HttpAppFramework.h"
+
 #include <drogon/HttpClient.h>
 #include <drogon/drogon_test.h>
 #include <trantor/net/TcpClient.h>
@@ -54,7 +56,7 @@ DROGON_TEST(RequestStreamTest)
 {
     const std::string ip = "127.0.0.1";
     const uint16_t port = 8848;
-    auto client = HttpClient::newHttpClient(ip, port);
+    auto client = HttpClient::newHttpClient(ip, port, false, toolkit::EventPollerPool::Instance().getPoller(false));
     HttpRequestPtr req;
 
     bool enabled = false;

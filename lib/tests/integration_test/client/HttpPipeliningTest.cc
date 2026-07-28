@@ -10,7 +10,7 @@ static int counter = -1;
 
 DROGON_TEST(HttpPipeliningTest)
 {
-    auto client = HttpClient::newHttpClient("127.0.0.1", 8848);
+    auto client = HttpClient::newHttpClient("127.0.0.1", 8848, false, app().getLoop());
     client->setPipeliningDepth(64);
 
     auto request1 = HttpRequest::newHttpRequest();
@@ -57,7 +57,7 @@ DROGON_TEST(HttpPipeliningTest)
 
 DROGON_TEST(HttpPipeliningStrangeTest1)
 {
-    auto client = HttpClient::newHttpClient("127.0.0.1", 8848);
+    auto client = HttpClient::newHttpClient("127.0.0.1", 8848, false, app().getLoop());
     client->setPipeliningDepth(64);
     for (int i = 0; i < 4; ++i)
     {
@@ -75,7 +75,7 @@ DROGON_TEST(HttpPipeliningStrangeTest1)
 
 DROGON_TEST(HttpPipeliningStrangeTest2)
 {
-    auto client = HttpClient::newHttpClient("127.0.0.1", 8848);
+    auto client = HttpClient::newHttpClient("127.0.0.1", 8848, false, app().getLoop());
     client->setPipeliningDepth(64);
     for (int i = 0; i < 6; ++i)
     {

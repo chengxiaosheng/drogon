@@ -19,7 +19,7 @@
 #include "HttpResponseParser.h"
 
 #include <drogon/config.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <algorithm>
 
 using namespace trantor;
@@ -34,11 +34,14 @@ static const size_t kDefaultDNSTimeout{600};
 void HttpClientImpl::createTcpClient()
 {
     TraceL << "New TcpClient," << serverAddr_.toIpPort();
-    tcpClientPtr_ =
-        std::make_shared<trantor::TcpClient>(loop_, serverAddr_, "httpClient");
-
     if (useSSL_ && utils::supportsTls())
     {
+        // TLS 必须实例化 TcpClientWithTLSPolicy 包装器：基类 trantor::TcpClient 的
+        // setTLSPolicy() 是空操作，若用基类则 enableSSL() 不生效，连接退化为明文
+        // TCP，HTTPS 服务器无法收到有效请求。
+        auto tcpClientPtr = std::make_shared<
+            toolkit::TcpClientWithTLSPolicy<trantor::TcpClient>>(
+            loop_, serverAddr_, "httpClient");
         TraceL << "useOldTLS=" << useOldTLS_;
         TraceL << "domain=" << domain_;
         auto policy = trantor::TLSPolicy::defaultClientPolicy();
@@ -48,7 +51,14 @@ void HttpClientImpl::createTcpClient()
             .setConfCmds(sslConfCmds_)
             .setCertPath(clientCertPath_)
             .setKeyPath(clientKeyPath_);
-        tcpClientPtr_->enableSSL(std::move(policy));
+        tcpClientPtr->enableSSL(std::move(policy));
+
+        tcpClientPtr_= tcpClientPtr;
+    }
+    else
+    {
+        tcpClientPtr_ =
+            std::make_shared<trantor::TcpClient>(loop_, serverAddr_, "httpClient");
     }
 
     auto thisPtr = shared_from_this();
@@ -152,20 +162,23 @@ HttpClientImpl::HttpClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop
                                bool useSSL,
                                bool useOldTLS,
                                bool validateCert)
-    : loop_(loop),
+    : loop_(loop ? loop : toolkit::EventPoller::getCurrentPoller()),
       serverAddr_(addr),
       useSSL_(useSSL),
       validateCert_(validateCert),
       useOldTLS_(useOldTLS)
 {
+    if (!loop_) loop_ = toolkit::EventPollerPool::Instance().getPoller();
 }
 
 HttpClientImpl::HttpClientImpl(const std::shared_ptr<toolkit::EventPoller> &loop,
                                const std::string &hostString,
                                bool useOldTLS,
                                bool validateCert)
-    : loop_(loop), validateCert_(validateCert), useOldTLS_(useOldTLS)
+    : loop_(loop ? loop : toolkit::EventPoller::getCurrentPoller()), validateCert_(validateCert), useOldTLS_(useOldTLS)
 {
+    if (!loop_) loop_ = toolkit::EventPollerPool::Instance().getPoller();
+
     auto lowerHost = hostString;
     std::transform(lowerHost.begin(),
                    lowerHost.end(),
@@ -276,7 +289,7 @@ void HttpClientImpl::sendRequest(const drogon::HttpRequestPtr &req,
     auto thisPtr = shared_from_this();
     loop_->async([thisPtr, req, callback = callback, timeout]() mutable {
         thisPtr->sendRequestInLoop(req, std::move(callback), timeout);
-    });
+    }, false);
 }
 
 void HttpClientImpl::sendRequest(const drogon::HttpRequestPtr &req,
@@ -287,7 +300,7 @@ void HttpClientImpl::sendRequest(const drogon::HttpRequestPtr &req,
     loop_->async(
         [thisPtr, req, callback = std::move(callback), timeout]() mutable {
             thisPtr->sendRequestInLoop(req, std::move(callback), timeout);
-        });
+        }, false);
 }
 
 struct RequestCallbackParams
@@ -323,7 +336,7 @@ void HttpClientImpl::sendRequestInLoop(const HttpRequestPtr &req,
                                                 req);
 
     loop_->doDelayTask(
-        timeout,
+        static_cast<uint64_t>(timeout * 1000),
         [weakCallbackBackPtr =
              std::weak_ptr<RequestCallbackParams>(callbackParamsPtr)] () -> uint64_t {
             auto callbackParamsPtr = weakCallbackBackPtr.lock();
@@ -350,6 +363,7 @@ void HttpClientImpl::sendRequestInLoop(const HttpRequestPtr &req,
 
                 (callbackParamsPtr->callback)(ReqResult::Timeout, nullptr);
             }
+            return 0;
         });
     sendRequestInLoop(req,
                       [callbackParamsPtr](ReqResult r,
@@ -488,7 +502,7 @@ void HttpClientImpl::sendRequestInLoop(const drogon::HttpRequestPtr &req,
 
                         thisPtr->popFrontRequest();
                     }
-                });
+                }, false);
             });
 
         return;
@@ -655,7 +669,7 @@ HttpClientPtr HttpClient::newHttpClient(const std::string &ip,
 {
     bool isIpv6 = ip.find(':') == std::string::npos ? false : true;
     return std::make_shared<HttpClientImpl>(
-        loop == nullptr ? toolkit::EventPollerPool::Instance().getPoller() : loop,
+        loop,
         trantor::InetAddress(ip, port, isIpv6),
         useSSL,
         useOldTLS,
@@ -668,7 +682,7 @@ HttpClientPtr HttpClient::newHttpClient(const std::string &hostString,
                                         bool validateCert)
 {
     return std::make_shared<HttpClientImpl>(
-        loop == nullptr ? toolkit::EventPollerPool::Instance().getPoller() : loop,
+        loop,
         hostString,
         useOldTLS,
         validateCert);
